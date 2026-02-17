@@ -20,6 +20,17 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
+function resolveMediaUrl(value: string | null | undefined): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+    return trimmed
+  }
+  const normalized = trimmed.replace(/^\/+/, "").replace(/^uploads\//, "")
+  return `/uploads/${normalized}`
+}
+
 interface BotActiveRule {
   id: string
   bot_id: string
@@ -433,7 +444,7 @@ export function BotsContent({
       .from("bot-images")
       .getPublicUrl(fileName)
     
-    return urlData.publicUrl
+    return resolveMediaUrl(urlData.publicUrl)
   }
 
   const openRulesDialog = (bot: BotType) => {
@@ -773,7 +784,7 @@ export function BotsContent({
                     <Label className="text-foreground">Profilbild</Label>
                     <div className="flex items-center gap-4">
                       <Avatar className="h-16 w-16">
-                        <AvatarImage src={avatarPreview || undefined} />
+                          <AvatarImage src={resolveMediaUrl(avatarPreview) || undefined} />
                         <AvatarFallback><Bot className="h-8 w-8" /></AvatarFallback>
                       </Avatar>
                       <Button variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}>
@@ -798,7 +809,7 @@ export function BotsContent({
                       onClick={() => bannerInputRef.current?.click()}
                     >
                       {bannerPreview ? (
-                        <img src={bannerPreview} alt="Banner Preview" className="w-full h-full object-cover" />
+                        <img src={resolveMediaUrl(bannerPreview) || undefined} alt="Banner Preview" className="w-full h-full object-cover" />
                       ) : (
                         <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                           <ImageIcon className="h-5 w-5 mr-2" />
@@ -852,7 +863,7 @@ export function BotsContent({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={bot.avatar_url || undefined} />
+                          <AvatarImage src={resolveMediaUrl(bot.avatar_url) || undefined} />
                           <AvatarFallback className="bg-primary/10">
                             <Bot className="h-5 w-5 text-primary" />
                           </AvatarFallback>

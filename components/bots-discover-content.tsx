@@ -7,6 +7,17 @@ import { Bot, BadgeCheck, Search } from "lucide-react"
 import { useState } from "react"
 import Link from "next/link"
 
+function resolveMediaUrl(value: string | null | undefined): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+    return trimmed
+  }
+  const normalized = trimmed.replace(/^\/+/, "").replace(/^uploads\//, "")
+  return `/uploads/${normalized}`
+}
+
 interface BotItem {
   id: string
   name: string
@@ -61,7 +72,7 @@ export function BotsDiscoverContent({
             <div key={bot.id} className="glass rounded-xl p-5 hover:bg-secondary/20 transition-colors">
               <div className="flex items-start gap-4">
                 <Avatar className="h-12 w-12">
-                  <AvatarImage src={bot.avatar_url || undefined} />
+                  <AvatarImage src={resolveMediaUrl(bot.avatar_url) || undefined} />
                   <AvatarFallback className="bg-primary/10">
                     <Bot className="h-5 w-5 text-primary" />
                   </AvatarFallback>

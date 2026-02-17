@@ -48,6 +48,17 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
 
+function resolveMediaUrl(value: string | null | undefined): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+    return trimmed
+  }
+  const normalized = trimmed.replace(/^\/+/, "").replace(/^uploads\//, "")
+  return `/uploads/${normalized}`
+}
+
 interface BotRule {
   id: string
   bot_id: string
@@ -183,8 +194,8 @@ export function BotProfileContent({
   // Image upload state
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [bannerFile, setBannerFile] = useState<File | null>(null)
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(bot.avatar_url)
-  const [bannerPreview, setBannerPreview] = useState<string | null>(bot.banner_url)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(resolveMediaUrl(bot.avatar_url))
+  const [bannerPreview, setBannerPreview] = useState<string | null>(resolveMediaUrl(bot.banner_url))
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
   
@@ -237,15 +248,15 @@ export function BotProfileContent({
       .from("bot-images")
       .getPublicUrl(fileName)
     
-    return urlData.publicUrl
+    return resolveMediaUrl(urlData.publicUrl)
   }
 
   const handleSaveBot = async () => {
     setIsLoading(true)
     const supabase = createDbClient()
     
-    let newAvatarUrl = bot.avatar_url
-    let newBannerUrl = bot.banner_url
+    let newAvatarUrl = resolveMediaUrl(bot.avatar_url)
+    let newBannerUrl = resolveMediaUrl(bot.banner_url)
     
     if (avatarFile) {
       newAvatarUrl = await uploadImage(avatarFile, "avatar")
@@ -383,8 +394,8 @@ export function BotProfileContent({
     <div className="space-y-6">
       {/* Banner */}
       <div className="relative h-48 rounded-xl overflow-hidden bg-gradient-to-r from-primary/20 to-primary/5">
-        {bot.banner_url && (
-          <img src={bot.banner_url} alt="Banner" className="w-full h-full object-cover" />
+        {resolveMediaUrl(bot.banner_url) && (
+          <img src={resolveMediaUrl(bot.banner_url) || undefined} alt="Banner" className="w-full h-full object-cover" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
       </div>
@@ -392,7 +403,7 @@ export function BotProfileContent({
       {/* Bot Info Header */}
       <div className="flex flex-col md:flex-row gap-6 -mt-16 px-6 relative z-10">
         <Avatar className="h-32 w-32 border-4 border-background shadow-xl">
-          <AvatarImage src={bot.avatar_url || undefined} />
+          <AvatarImage src={resolveMediaUrl(bot.avatar_url) || undefined} />
           <AvatarFallback className="text-4xl bg-primary/10">
             <Bot className="h-16 w-16" />
           </AvatarFallback>
@@ -460,7 +471,7 @@ export function BotProfileContent({
                       <Label>Profilbild</Label>
                       <div className="flex items-center gap-4">
                         <Avatar className="h-20 w-20">
-                          <AvatarImage src={avatarPreview || undefined} />
+                          <AvatarImage src={resolveMediaUrl(avatarPreview) || undefined} />
                           <AvatarFallback><Bot className="h-10 w-10" /></AvatarFallback>
                         </Avatar>
                         <Button variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}>
@@ -485,7 +496,7 @@ export function BotProfileContent({
                         onClick={() => bannerInputRef.current?.click()}
                       >
                         {bannerPreview ? (
-                          <img src={bannerPreview} alt="Banner Preview" className="w-full h-full object-cover" />
+                          <img src={resolveMediaUrl(bannerPreview) || undefined} alt="Banner Preview" className="w-full h-full object-cover" />
                         ) : (
                           <div className="flex items-center justify-center h-full text-muted-foreground">
                             <ImageIcon className="h-8 w-8 mr-2" />
