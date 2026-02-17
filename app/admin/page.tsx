@@ -14,7 +14,9 @@ export default async function AdminPage() {
     .eq("id", user.id)
     .single()
 
-  if (profile?.role !== "admin") {
+  const hasAdminAccess = profile?.role === "admin" || profile?.role === "owner"
+
+  if (!hasAdminAccess) {
     return (
       <DashboardShell>
         <div className="max-w-lg mx-auto glass rounded-2xl p-12 text-center">

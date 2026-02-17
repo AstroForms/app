@@ -37,11 +37,13 @@ export function HomeNavbar({ user, onSearch, onToggleSidebar, sidebarOpen }: Hom
       .catch(() => {})
   }, [user?.id])
 
+  const hasAdminAccess = userRole === "admin" || userRole === "owner"
   const visibleNav = [
     { href: "/", label: "Startseite", icon: Rocket },
     { href: "/channels", label: "Meine Channels", icon: Hash },
     { href: "/discover", label: "Entdecken", icon: Compass },
     { href: "/profile", label: "Profil", icon: User },
+    ...(hasAdminAccess ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ]
 
   return (
@@ -91,9 +93,9 @@ export function HomeNavbar({ user, onSearch, onToggleSidebar, sidebarOpen }: Hom
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm font-medium text-foreground hidden sm:inline">{user.username}</span>
-                  {userRole === "admin" && (
+                  {hasAdminAccess && (
                     <span className="text-[10px] font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded hidden sm:inline">
-                      ADMIN
+                      {userRole === "owner" ? "OWNER" : "ADMIN"}
                     </span>
                   )}
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />

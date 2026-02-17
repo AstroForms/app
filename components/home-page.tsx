@@ -120,8 +120,10 @@ export function HomePage({
     await signOut({ callbackUrl: "/" })
   }
 
+  const hasAdminAccess = userRole === "admin" || userRole === "owner"
+
   const visibleNav = navItems.filter((item) => {
-    if (item.adminOnly && userRole !== "admin") return false
+    if (item.adminOnly && !hasAdminAccess) return false
     if (item.authRequired && !user) return false
     return true
   })
@@ -174,8 +176,10 @@ export function HomePage({
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium text-foreground truncate flex-1">{user.username}</span>
-                    {userRole === "admin" && (
-                      <span className="text-[10px] font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">ADMIN</span>
+                    {hasAdminAccess && (
+                      <span className="text-[10px] font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+                        {userRole === "owner" ? "OWNER" : "ADMIN"}
+                      </span>
                     )}
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </button>
@@ -242,8 +246,10 @@ export function HomePage({
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium text-foreground truncate flex-1">{user.username}</span>
-                    {userRole === "admin" && (
-                      <span className="text-[10px] font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">ADMIN</span>
+                    {hasAdminAccess && (
+                      <span className="text-[10px] font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+                        {userRole === "owner" ? "OWNER" : "ADMIN"}
+                      </span>
                     )}
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </button>

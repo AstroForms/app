@@ -74,7 +74,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     await signOut({ callbackUrl: "/" })
   }
 
-  const visibleNav = navItems.filter((item) => !item.adminOnly || userRole === "admin")
+  const hasAdminAccess = userRole === "admin" || userRole === "owner"
+  const visibleNav = navItems.filter((item) => !item.adminOnly || hasAdminAccess)
 
   const renderNavItem = (item: NavItem, onClick?: () => void) => {
     const { href, label, icon: Icon } = item
@@ -120,8 +121,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm font-medium text-foreground truncate flex-1">{userProfile.username}</span>
-                  {userRole === "admin" && (
-                    <span className="text-[10px] font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">ADMIN</span>
+                  {hasAdminAccess && (
+                    <span className="text-[10px] font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+                      {userRole === "owner" ? "OWNER" : "ADMIN"}
+                    </span>
                   )}
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </button>
@@ -185,9 +188,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm font-medium text-foreground hidden sm:inline">{userProfile.username}</span>
-                      {userRole === "admin" && (
+                      {hasAdminAccess && (
                         <span className="text-[10px] font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded hidden sm:inline">
-                          ADMIN
+                          {userRole === "owner" ? "OWNER" : "ADMIN"}
                         </span>
                       )}
                       <ChevronDown className="h-4 w-4 text-muted-foreground" />

@@ -14,7 +14,8 @@ async function requireAdmin() {
     select: { role: true },
   })
 
-  if (!me || me.role !== "admin") {
+  const hasAdminAccess = me?.role === "admin" || me?.role === "owner"
+  if (!hasAdminAccess) {
     return { error: NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 }) }
   }
 
