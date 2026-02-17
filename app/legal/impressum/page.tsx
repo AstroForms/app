@@ -41,6 +41,7 @@ export default function ImpressumPage() {
             <h2 className="text-xl font-semibold text-foreground mb-4">Kontakt</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               E-Mail: In Arbeit
+            </p>
           </section>
 
           <section className="glass rounded-2xl p-8 mb-6">
