@@ -1,0 +1,50 @@
+import { redirect } from "next/navigation"
+import { DashboardShell } from "@/components/dashboard-shell"
+import { BotsDiscoverContent } from "@/components/bots-discover-content"
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/db"
+
+export default async function BotsDiscoverPage() {
+  const session = await auth()
+  if (!session?.user?.id) redirect("/auth/login")
+  const userId = session.user.id
+
+  const bots = await prisma.bot.findMany({
+    where: { isPublic: true },
+    include: {
+      owner: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  })
+
+  return (
+    <DashboardShell>
+      <BotsDiscoverContent
+        bots={bots.map((bot) => ({
+          id: bot.id,
+          name: bot.name,
+          description: bot.description,
+          avatar_url: bot.avatarUrl,
+          is_verified: bot.isVerified,
+          is_public: bot.isPublic,
+          owner_id: bot.ownerId,
+          profiles: {
+            id: bot.owner.id,
+            username: bot.owner.username || "",
+            display_name: bot.owner.displayName || "",
+            avatar_url: bot.owner.avatarUrl,
+          },
+        }))}
+        userId={userId}
+      />
+    </DashboardShell>
+  )
+}

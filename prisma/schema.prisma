@@ -1,0 +1,732 @@
+// Prisma Schema for AstroForms
+// Replaces Supabase with Prisma + NextAuth
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "classic"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ==========================================
+// NEXTAUTH MODELS
+// ==========================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ==========================================
+// WEBAUTHN / PASSKEYS
+// ==========================================
+
+model Authenticator {
+  credentialID         String  @id @map("credential_id")
+  userId               String  @map("user_id")
+  providerAccountId    String  @map("provider_account_id")
+  credentialPublicKey  String  @map("credential_public_key")
+  counter              Int
+  credentialDeviceType String  @map("credential_device_type")
+  credentialBackedUp   Boolean @map("credential_backed_up")
+  transports           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("authenticators")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  password      String? // hashed password
+  accounts      Account[]
+  sessions      Session[]
+  authenticators Authenticator[]
+  profile       Profile?
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ==========================================
+// PROFILE & USER DATA
+// ==========================================
+
+model Profile {
+  id              String   @id
+  username        String?  @unique
+  displayName     String?  @map("display_name")
+  bio             String?
+  avatarUrl       String?  @map("avatar_url")
+  bannerUrl       String?  @map("banner_url")
+  role            Role     @default(user)
+  isPrivate       Boolean  @default(false) @map("is_private")
+  showFollowers   Boolean  @default(true) @map("show_followers")
+  showLikedPosts  Boolean  @default(true) @map("show_liked_posts")
+  dmPrivacy       DmPrivacy @default(EVERYONE) @map("dm_privacy")
+  followersCount  Int      @default(0) @map("followers_count")
+  followingCount  Int      @default(0) @map("following_count")
+  xp              Int      @default(0)
+  level           Int      @default(1)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user                User      @relation(fields: [id], references: [id], onDelete: Cascade)
+  
+  // Relations
+  channelsOwned       Channel[]
+  channelMemberships  ChannelMember[]
+  posts               Post[]
+  postLikes           PostLike[]
+  postSaves           PostSave[]
+  postComments        PostComment[]
+  botsOwned           Bot[]
+  reportsCreated      Report[]   @relation("ReporterReports")
+  reportsReviewed     Report[]   @relation("ReviewerReports")
+  followersRel        Follow[]   @relation("Following")
+  followingRel        Follow[]   @relation("Follower")
+  followRequestsSent  FollowRequest[] @relation("FollowRequestSender")
+  followRequestsReceived FollowRequest[] @relation("FollowRequestReceiver")
+  conversationParticipants ConversationParticipant[]
+  messagesSent        Message[]
+  dmRequestsSent      DmRequest[] @relation("DmRequestSender")
+  dmRequestsReceived  DmRequest[] @relation("DmRequestReceiver")
+  blockedUsers        BlockedUser[] @relation("Blocker")
+  blockedByUsers      BlockedUser[] @relation("Blocked")
+  botVerificationRequests BotVerificationRequest[]
+  botChannelInvitesSent BotChannelInvite[]
+
+  @@map("profiles")
+}
+
+enum Role {
+  user
+  moderator
+  admin
+  owner
+}
+
+enum DmPrivacy {
+  EVERYONE
+  FOLLOWERS
+  REQUEST
+  NOBODY
+}
+
+// ==========================================
+// FOLLOWS
+// ==========================================
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String   @map("follower_id")
+  followingId String   @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  follower  Profile @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following Profile @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+model FollowRequest {
+  id          String        @id @default(cuid())
+  followerId  String        @map("follower_id")
+  followingId String        @map("following_id")
+  status      RequestStatus @default(PENDING)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  follower  Profile @relation("FollowRequestSender", fields: [followerId], references: [id], onDelete: Cascade)
+  following Profile @relation("FollowRequestReceiver", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("follow_requests")
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+// ==========================================
+// CHANNELS
+// ==========================================
+
+model Channel {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  iconUrl     String?  @map("icon_url")
+  bannerUrl   String?  @map("banner_url")
+  ownerId     String   @map("owner_id")
+  isVerified  Boolean  @default(false) @map("is_verified")
+  isPublic    Boolean  @default(true) @map("is_public")
+  memberCount Int      @default(0) @map("member_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  owner       Profile         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members     ChannelMember[]
+  posts       Post[]
+  automations BotAutomation[]
+  botInvites  BotChannelInvite[]
+  botChannelRules BotChannelRule[]
+  botExecutionLogs BotExecutionLog[]
+
+  @@map("channels")
+}
+
+model ChannelMember {
+  id        String      @id @default(cuid())
+  channelId String      @map("channel_id")
+  userId    String      @map("user_id")
+  role      MemberRole  @default(MEMBER)
+  joinedAt  DateTime    @default(now()) @map("joined_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@map("channel_members")
+}
+
+enum MemberRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+  OWNER
+}
+
+// ==========================================
+// POSTS
+// ==========================================
+
+model Post {
+  id              String   @id @default(cuid())
+  content         String
+  userId          String   @map("user_id")
+  channelId       String   @map("channel_id")
+  isAutomated     Boolean  @default(false) @map("is_automated")
+  botId           String?  @map("bot_id")
+  imageUrl        String?  @map("image_url")
+  linkUrl         String?  @map("link_url")
+  linkTitle       String?  @map("link_title")
+  linkDescription String?  @map("link_description")
+  linkImage       String?  @map("link_image")
+  parentPostId    String?  @map("parent_post_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user        Profile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel     Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  bot         Bot?          @relation(fields: [botId], references: [id], onDelete: SetNull)
+  parentPost  Post?         @relation("PostReplies", fields: [parentPostId], references: [id], onDelete: SetNull)
+  replies     Post[]        @relation("PostReplies")
+  likes       PostLike[]
+  saves       PostSave[]
+  comments    PostComment[]
+  hashtags    PostHashtag[]
+
+  @@index([channelId])
+  @@index([userId])
+  @@index([parentPostId])
+  @@map("posts")
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@map("post_likes")
+}
+
+model PostSave {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@map("post_saves")
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  post Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("post_comments")
+}
+
+// ==========================================
+// HASHTAGS
+// ==========================================
+
+model Hashtag {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  usageCount Int      @default(0) @map("usage_count")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  posts PostHashtag[]
+
+  @@index([usageCount(sort: Desc)])
+  @@map("hashtags")
+}
+
+model PostHashtag {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  hashtagId String   @map("hashtag_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post    Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtag Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, hashtagId])
+  @@map("post_hashtags")
+}
+
+// ==========================================
+// BOTS
+// ==========================================
+
+model Bot {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String   @map("owner_id")
+  avatarUrl   String?  @map("avatar_url")
+  bannerUrl   String?  @map("banner_url")
+  isVerified  Boolean  @default(false) @map("is_verified")
+  isActive    Boolean  @default(true) @map("is_active")
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  owner           Profile            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  automations     BotAutomation[]
+  posts           Post[]
+  activeRules     BotActiveRule[]
+  channelInvites  BotChannelInvite[]
+  channelRules    BotChannelRule[]
+  executionLogs   BotExecutionLog[]
+  verificationRequests BotVerificationRequest[]
+  actionLogs      BotActionLog[]
+  scheduledTasks  ScheduledTask[]
+
+  @@map("bots")
+}
+
+model BotAutomation {
+  id             String   @id @default(cuid())
+  botId          String   @map("bot_id")
+  name           String
+  description    String?
+  triggerType    String   @map("trigger_type")
+  triggerConfig  Json     @map("trigger_config")
+  actionType     String   @map("action_type")
+  actionConfig   Json     @map("action_config")
+  isActive       Boolean  @default(true) @map("is_active")
+  channelId      String?  @map("channel_id")
+  cooldownSeconds Int     @default(0) @map("cooldown_seconds")
+  triggerCount   Int      @default(0) @map("trigger_count")
+  lastTriggeredAt DateTime? @map("last_triggered_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  bot            Bot              @relation(fields: [botId], references: [id], onDelete: Cascade)
+  channel        Channel?         @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  scheduledTasks ScheduledTask[]
+
+  @@map("bot_automations")
+}
+
+model BotActiveRule {
+  id              String   @id @default(cuid())
+  botId           String   @map("bot_id")
+  ruleName        String   @map("rule_name")
+  ruleDescription String   @map("rule_description")
+  ruleCategory    String   @map("rule_category")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@unique([botId, ruleName])
+  @@map("bot_active_rules")
+}
+
+model BotChannelInvite {
+  id        String       @id @default(cuid())
+  botId     String       @map("bot_id")
+  channelId String       @map("channel_id")
+  invitedBy String       @map("invited_by")
+  status    InviteStatus @default(PENDING)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  bot       Bot     @relation(fields: [botId], references: [id], onDelete: Cascade)
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  inviter   Profile @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  @@unique([botId, channelId])
+  @@map("bot_channel_invites")
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model BotChannelRule {
+  id           String   @id @default(cuid())
+  botId        String   @map("bot_id")
+  channelId    String   @map("channel_id")
+  ruleName     String   @map("rule_name")
+  ruleCategory String   @map("rule_category")
+  isEnabled    Boolean  @default(true) @map("is_enabled")
+  config       Json
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  bot     Bot     @relation(fields: [botId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([botId, channelId, ruleName])
+  @@index([botId])
+  @@index([channelId])
+  @@map("bot_channel_rules")
+}
+
+model BotExecutionLog {
+  id          String   @id @default(cuid())
+  botId       String   @map("bot_id")
+  channelId   String   @map("channel_id")
+  ruleName    String   @map("rule_name")
+  triggerType String   @map("trigger_type")
+  triggerData Json?    @map("trigger_data")
+  actionResult Json?   @map("action_result")
+  executedAt  DateTime @default(now()) @map("executed_at")
+
+  bot     Bot     @relation(fields: [botId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([botId])
+  @@index([channelId])
+  @@index([executedAt(sort: Desc)])
+  @@map("bot_execution_logs")
+}
+
+model BotVerificationRequest {
+  id               String   @id @default(cuid())
+  botId            String   @unique @map("bot_id")
+  ownerId          String   @map("owner_id")
+  status           VerificationStatus @default(PENDING)
+  botPurpose       String   @map("bot_purpose")
+  targetAudience   String   @map("target_audience")
+  uniqueFeatures   String   @map("unique_features")
+  expectedUsers    String   @map("expected_users")
+  channelCount     Int      @default(0) @map("channel_count")
+  hasPrivacyPolicy Boolean  @default(false) @map("has_privacy_policy")
+  privacyPolicyUrl String?  @map("privacy_policy_url")
+  contactEmail     String   @map("contact_email")
+  additionalInfo   String?  @map("additional_info")
+  reviewedBy       String?  @map("reviewed_by")
+  reviewedAt       DateTime? @map("reviewed_at")
+  rejectionReason  String?  @map("rejection_reason")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  bot   Bot     @relation(fields: [botId], references: [id], onDelete: Cascade)
+  owner Profile @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@map("bot_verification_requests")
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model BotActionLog {
+  id           String    @id @default(cuid())
+  botId        String?   @map("bot_id")
+  automationId String?   @map("automation_id")
+  actionType   String    @map("action_type")
+  triggerType  String?   @map("trigger_type")
+  targetUserId String?   @map("target_user_id")
+  targetPostId String?   @map("target_post_id")
+  channelId    String?   @map("channel_id")
+  details      Json
+  success      Boolean   @default(true)
+  errorMessage String?   @map("error_message")
+  executedAt   DateTime  @default(now()) @map("executed_at")
+
+  bot Bot? @relation(fields: [botId], references: [id], onDelete: SetNull)
+
+  @@index([botId])
+  @@index([channelId])
+  @@index([executedAt(sort: Desc)])
+  @@map("bot_action_logs")
+}
+
+model ScheduledTask {
+  id             String       @id @default(cuid())
+  automationId   String       @map("automation_id")
+  nextRunAt      DateTime     @map("next_run_at")
+  lastRunAt      DateTime?    @map("last_run_at")
+  scheduleType   ScheduleType @map("schedule_type")
+  scheduleConfig Json         @map("schedule_config")
+  isActive       Boolean      @default(true) @map("is_active")
+  runCount       Int          @default(0) @map("run_count")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  automation BotAutomation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  bot        Bot?          @relation(fields: [botId], references: [id])
+  botId      String?       @map("bot_id")
+
+  @@map("scheduled_tasks")
+}
+
+enum ScheduleType {
+  ONCE
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+// ==========================================
+// REPORTS
+// ==========================================
+
+model Report {
+  id          String       @id @default(cuid())
+  reporterId  String       @map("reporter_id")
+  targetType  TargetType   @map("target_type")
+  targetId    String       @map("target_id")
+  reason      ReportReason
+  details     String?
+  status      ReportStatus @default(PENDING)
+  adminNotes  String?      @map("admin_notes")
+  reviewedBy  String?      @map("reviewed_by")
+  reviewedAt  DateTime?    @map("reviewed_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  reporter Profile  @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer Profile? @relation("ReviewerReports", fields: [reviewedBy], references: [id])
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([targetType, targetId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("reports")
+}
+
+enum TargetType {
+  USER
+  POST
+  CHANNEL
+  COMMENT
+  MESSAGE
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  HATE_SPEECH
+  VIOLENCE
+  INAPPROPRIATE
+  IMPERSONATION
+  MISINFORMATION
+  COPYRIGHT
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+// ==========================================
+// DIRECT MESSAGES
+// ==========================================
+
+model Conversation {
+  id              String   @id @default(cuid())
+  isGroup         Boolean  @default(false) @map("is_group")
+  name            String?
+  encryptionKeyId String?  @map("encryption_key_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  lastMessageAt   DateTime @default(now()) @map("last_message_at")
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String     @id @default(cuid())
+  conversationId String     @map("conversation_id")
+  userId         String     @map("user_id")
+  joinedAt       DateTime   @default(now()) @map("joined_at")
+  lastReadAt     DateTime   @default(now()) @map("last_read_at")
+  isMuted        Boolean    @default(false) @map("is_muted")
+  isArchived     Boolean    @default(false) @map("is_archived")
+  nickname       String?
+  role           MemberRole @default(MEMBER)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         Profile      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id               String      @id @default(cuid())
+  conversationId   String      @map("conversation_id")
+  senderId         String      @map("sender_id")
+  contentEncrypted String      @map("content_encrypted")
+  contentIv        String?     @map("content_iv")
+  messageType      MessageType @default(TEXT) @map("message_type")
+  mediaUrl         String?     @map("media_url")
+  mediaType        String?     @map("media_type")
+  mediaSize        Int?        @map("media_size")
+  replyToId        String?     @map("reply_to_id")
+  isEdited         Boolean     @default(false) @map("is_edited")
+  editedAt         DateTime?   @map("edited_at")
+  isDeleted        Boolean     @default(false) @map("is_deleted")
+  deletedAt        DateTime?   @map("deleted_at")
+  reactions        Json
+  createdAt        DateTime    @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       Profile      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]    @relation("MessageReplies")
+  readReceipts MessageReadReceipt[]
+
+  @@map("messages")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  GIF
+  FILE
+  VOICE
+  SYSTEM
+}
+
+model MessageReadReceipt {
+  id        String   @id @default(cuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  readAt    DateTime @default(now()) @map("read_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_read_receipts")
+}
+
+model DmRequest {
+  id            String        @id @default(cuid())
+  senderId      String        @map("sender_id")
+  recipientId   String        @map("recipient_id")
+  messagePreview String?      @map("message_preview")
+  status        RequestStatus @default(PENDING)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  sender    Profile @relation("DmRequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient Profile @relation("DmRequestReceiver", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, recipientId])
+  @@map("dm_requests")
+}
+
+model BlockedUser {
+  id        String   @id @default(cuid())
+  blockerId String   @map("blocker_id")
+  blockedId String   @map("blocked_id")
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blocker Profile @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked Profile @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@map("blocked_users")
+}

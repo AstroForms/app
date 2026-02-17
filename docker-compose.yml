@@ -1,0 +1,61 @@
+services:
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certs:/etc/letsencrypt/live/astro.aveen.systems
+    command: >
+      certonly --manual --preferred-challenges dns --email damian.schoenberger@outlook.de --agree-tos --no-eff-email -d astro.aveen.systems
+    stdin_open: true
+    tty: true
+    # Anleitung: Siehe unten für Startbefehl und DNS-Eintrag
+  web:
+    build: .
+    image: astroforms-web:latest
+    environment:
+      - DATABASE_URL=file:./database.db
+      - PRISMA_CLIENT_ENGINE_TYPE=library
+      - NODE_ENV=production
+      - NEXTAUTH_URL=https://astro.aveen.systems
+      - NEXTAUTH_SECRET=h/0MR8BJ3sTTSEz/DaVoysuzUzBBNyQQKC20DBpPavo=
+      - GITHUB_CLIENT_ID=Ov23li0yXE9hZ8Uchrx6
+      - GITHUB_CLIENT_SECRET=431f75bbdf8baf65554265c91e7ed22662d37857
+      - GOOGLE_CLIENT_ID=80815630051-rkihfdkq4ev6okt5p8f8eb54bshvgi11.apps.googleusercontent.com
+      - GOOGLE_CLIENT_SECRET=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
+      - DISCORD_CLIENT_ID=1288507487644946442
+      - DISCORD_CLIENT_SECRET=XiHLtXgQfWz5m1jc6vPEzhIIb6tVlN4V
+      - MICROSOFT_CLIENT_ID=
+      - MICROSOFT_CLIENT_SECRET=
+      - S3_ENDPOINT=
+      - S3_ACCESS_KEY=
+      - S3_SECRET_KEY=
+      - S3_BUCKET=
+      - S3_PUBLIC_URL=
+      - SMTP_HOST=mail.eyg01.nl
+      - SMTP_PORT=587
+      - SMTP_USER=noreply@aveen.systems
+      - SMTP_PASS=ELLIanAG,_,51
+      - SMTP_FROM=AstroForms <noreply@aveen.systems>
+    ports:
+      - "8080:3000"
+      - "51212:51212"
+    volumes:
+      - ./database.db:/app/database.db
+      - ./public/uploads:/app/public/uploads
+    restart: unless-stopped
+    depends_on: []
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-astroforms.conf:/etc/nginx/conf.d/astroforms.conf:ro
+      - /etc/letsencrypt/live/astro.aveen.systems:/etc/letsencrypt/live/astro.aveen.systems:ro
+    depends_on:
+      - web
+    restart: unless-stopped
+
+# Hinweise:
+# - Lege deine SSL-Zertifikate (fullchain.pem, privkey.pem) in ./certs ab.
+# - Passe nginx.conf für die Domain astro.aveen.systems an.
+# - Beispiel-nginx.conf und Zertifikatserstellung siehe README.

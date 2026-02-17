@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 228 15% 6%;
+    --foreground: 210 20% 95%;
+    --card: 228 15% 8%;
+    --card-foreground: 210 20% 95%;
+    --popover: 228 15% 8%;
+    --popover-foreground: 210 20% 95%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 228 15% 6%;
+    --secondary: 228 12% 14%;
+    --secondary-foreground: 210 20% 90%;
+    --muted: 228 12% 12%;
+    --muted-foreground: 215 15% 55%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 228 15% 6%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 20% 95%;
+    --border: 228 12% 16%;
+    --input: 228 12% 16%;
+    --ring: 199 89% 48%;
+    --chart-1: 199 89% 48%;
+    --chart-2: 172 66% 50%;
+    --chart-3: 262 83% 58%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.625rem;
+    --sidebar-background: 228 15% 7%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 228 15% 6%;
+    --sidebar-accent: 228 12% 14%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 228 12% 16%;
+    --sidebar-ring: 199 89% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl border border-border/50;
+  }
+  .glow-sm {
+    box-shadow: 0 0 15px -3px hsl(199 89% 48% / 0.15);
+  }
+  .glow {
+    box-shadow: 0 0 30px -5px hsl(199 89% 48% / 0.2);
+  }
+}
