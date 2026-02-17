@@ -89,6 +89,7 @@ export function AdminContent({
     id: string;
     username: string;
     displayName?: string;
+    role?: string;
   }
   const [userSearchResults, setUserSearchResults] = useState<User[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
@@ -152,6 +153,31 @@ export function AdminContent({
       setUserSearchResults([])
     } finally {
       setSearchLoading(false)
+    }
+  }
+
+  const grantAdmin = async (profileId: string) => {
+    if (!profileId.trim()) return
+    try {
+      const res = await fetch("/api/admin/grant-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: profileId }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(data?.error || "Fehler beim Rollen-Update")
+      }
+
+      if (data?.alreadyAdmin) {
+        toast.info("Nutzer hat bereits Admin-Rechte.")
+      } else {
+        toast.success("Admin-Rechte vergeben!")
+      }
+      await searchUserByUsername()
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Rollen-Update")
     }
   }
 
@@ -597,10 +623,23 @@ export function AdminContent({
                     <div>
                       <p className="font-medium text-foreground text-sm">@{user.username}</p>
                       <p className="text-xs text-muted-foreground">{user.displayName}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground/80 mt-1">
+                        Rolle: {user.role || "user"}
+                      </p>
                     </div>
-                    <Button size="sm" onClick={() => verifyUser(user.id)} className="text-primary-foreground">
-                      <BadgeCheck className="h-3.5 w-3.5 mr-1" /> Verifizieren
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => verifyUser(user.id)} className="text-primary-foreground">
+                        <BadgeCheck className="h-3.5 w-3.5 mr-1" /> Verifizieren
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => grantAdmin(user.id)}
+                        disabled={user.role === "admin" || user.role === "owner"}
+                      >
+                        <Shield className="h-3.5 w-3.5 mr-1" /> Admin geben
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
