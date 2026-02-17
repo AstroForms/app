@@ -15,7 +15,8 @@ services:
       - DATABASE_URL=file:./database.db
       - PRISMA_CLIENT_ENGINE_TYPE=library
       - NODE_ENV=production
-      - NEXTAUTH_URL=https://astro.aveen.systems
+      - NEXTAUTH_URL=https://astroforms.de
+      - AUTH_TRUST_HOST=true
       - NEXTAUTH_SECRET=h/0MR8BJ3sTTSEz/DaVoysuzUzBBNyQQKC20DBpPavo=
       - GITHUB_CLIENT_ID=Ov23li0yXE9hZ8Uchrx6
       - GITHUB_CLIENT_SECRET=431f75bbdf8baf65554265c91e7ed22662d37857
