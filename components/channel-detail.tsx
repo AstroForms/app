@@ -32,6 +32,28 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
 
+function resolveMediaUrl(value: string | null | undefined): string {
+  if (!value) return ""
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("blob:")
+  ) {
+    return trimmed
+  }
+
+  if (trimmed.startsWith("/")) {
+    return trimmed
+  }
+
+  const normalized = trimmed.replace(/^uploads\//, "")
+  return `/uploads/${normalized}`
+}
+
 interface ChannelDetailProps {
   channel: {
     id: string
@@ -596,8 +618,8 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
     return () => clearInterval(interval)
   }, [router])
   const [isPosting, setIsPosting] = useState(false)
-  const [iconUrl, setIconUrl] = useState(channel.icon_url || "")
-  const [bannerUrl, setBannerUrl] = useState(channel.banner_url || "")
+  const [iconUrl, setIconUrl] = useState(resolveMediaUrl(channel.icon_url))
+  const [bannerUrl, setBannerUrl] = useState(resolveMediaUrl(channel.banner_url))
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -636,7 +658,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
           profiles: {
             id: channel.owner_id,
             username: "Owner",
-            avatar_url: channel.icon_url || null,
+            avatar_url: resolveMediaUrl(channel.icon_url) || null,
             display_name: "Owner",
           },
         },
