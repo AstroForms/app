@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { Rocket, Github, KeyRound } from "lucide-react"
 
@@ -46,6 +46,18 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const urlError = searchParams.get("error")
+  const verified = searchParams.get("verified") === "1"
+
+  const friendlyUrlError =
+    urlError === "EmailNotVerified"
+      ? "Bitte bestaetige zuerst deine E-Mail."
+      : urlError === "InvalidVerificationLink"
+        ? "Der Bestaetigungslink ist ungueltig."
+        : urlError === "VerificationLinkExpired"
+          ? "Der Bestaetigungslink ist abgelaufen. Bitte neu registrieren."
+          : null
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,10 +82,7 @@ export default function LoginPage() {
   }
 
   const handleOAuth = async (provider: "google" | "discord" | "github" | "microsoft-entra-id") => {
-    const result = await signIn(provider, { callbackUrl: "/" })
-    if (result?.error) {
-      setError(result.error)
-    }
+    await signIn(provider, { callbackUrl: "/" })
   }
 
   const handlePasskeyLogin = async () => {
@@ -94,6 +103,9 @@ export default function LoginPage() {
             <span className="text-2xl font-bold text-foreground">AstroForms</span>
           </Link>
           <p className="text-muted-foreground">Melde dich bei deinem Account an</p>
+          {verified && (
+            <p className="text-sm text-emerald-500 mt-2">E-Mail erfolgreich bestaetigt. Du kannst dich jetzt anmelden.</p>
+          )}
         </div>
 
         <div className="glass rounded-2xl p-8">
@@ -172,6 +184,9 @@ export default function LoginPage() {
             </div>
             {error && (
               <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{error}</p>
+            )}
+            {!error && friendlyUrlError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{friendlyUrlError}</p>
             )}
             <Button type="submit" className="w-full h-11 font-semibold text-primary-foreground" disabled={isLoading}>
               {isLoading ? "Anmelden..." : "Anmelden"}

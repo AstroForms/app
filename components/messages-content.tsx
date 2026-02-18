@@ -247,7 +247,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
       }
 
       // Get all conversation IDs
-      const conversationIds = participations?.map(p => p.conversation_id) || []
+      const conversationIds = participations?.map((p: any) => p.conversation_id) || []
       
       if (conversationIds.length === 0) {
         setConversations([])
@@ -291,9 +291,9 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
       )
 
       // Build conversation objects
-      const convos: Conversation[] = participations?.map(p => {
+      const convos: Conversation[] = participations?.map((p: any) => {
         const conv = p.conversations as any
-        const participants = allParticipants?.filter(ap => ap.conversation_id === p.conversation_id) || []
+        const participants = allParticipants?.filter((ap: any) => ap.conversation_id === p.conversation_id) || []
         const lastMsg = decryptedLastMessages?.find(m => m.conversation_id === p.conversation_id)
         const unread = 0
 
@@ -305,7 +305,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
           created_at: conv.created_at,
           updated_at: conv.updated_at,
           last_message_at: conv.last_message_at,
-          participants: participants.map(p => ({
+          participants: participants.map((p: any) => ({
             user_id: p.user_id,
             is_admin: p.is_admin,
             is_muted: p.is_muted,
@@ -435,7 +435,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
       if (!error && data) {
         // Decrypt messages
         const decryptedMessages = await Promise.all(
-          data.map(async (msg) => {
+          data.map(async (msg: any) => {
             if (msg.content_encrypted && msg.content_iv && encryptionKey) {
               const decrypted = await decryptMessage(
                 msg.content_encrypted,
@@ -454,7 +454,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
         await supabase
           .from("message_read_receipts")
           .upsert(
-            data.filter(m => m.sender_id !== currentUserId).map(m => ({
+            data.filter((m: any) => m.sender_id !== currentUserId).map((m: any) => ({
               message_id: m.id,
               user_id: currentUserId,
               read_at: new Date().toISOString()

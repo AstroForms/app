@@ -230,15 +230,16 @@ export function AdminContent({
       .select("owner_id")
       .eq("id", selectedReport.target_id)
       .single()
+    const channelRow = channel as { owner_id?: string } | null
 
     if (action === "lock_channel" || action === "lock_and_ban") {
       await supabase.from("channels").update({ is_locked: true }).eq("id", selectedReport.target_id)
       toast.success("Channel gesperrt!")
     }
 
-    if ((action === "ban_owner" || action === "lock_and_ban") && channel?.owner_id) {
+    if ((action === "ban_owner" || action === "lock_and_ban") && channelRow?.owner_id) {
       await supabase.from("bans").insert({
-        user_id: channel.owner_id,
+        user_id: channelRow.owner_id,
         banned_by: userId,
         reason: modReason || "Channel-Report",
         is_global: true,
@@ -264,7 +265,8 @@ export function AdminContent({
         .select("user_id")
         .eq("id", selectedReport.target_id)
         .single()
-      if (post) targetUserId = post.user_id
+      const postRow = post as { user_id?: string } | null
+      if (postRow?.user_id) targetUserId = postRow.user_id
     }
 
     if (userModAction === "warn") {

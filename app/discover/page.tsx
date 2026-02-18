@@ -15,7 +15,7 @@ export default async function DiscoverPage() {
     .limit(50)
 
   // Get actual member counts
-  const channelIds = channels?.map(c => c.id) || []
+  const channelIds = (channels || []).map((c: { id: string }) => c.id)
   const memberCounts: Record<string, number> = {}
   
   if (channelIds.length > 0) {
@@ -29,17 +29,17 @@ export default async function DiscoverPage() {
   }
 
   // Add real member counts to channels
-  const channelsWithCounts = channels?.map(c => ({
+  const channelsWithCounts = (channels || []).map((c: { id: string; [key: string]: unknown }) => ({
     ...c,
     member_count: memberCounts[c.id] || 0
-  })).sort((a, b) => b.member_count - a.member_count) || []
+  })).sort((a: { member_count: number }, b: { member_count: number }) => b.member_count - a.member_count)
 
   const { data: memberships } = await supabase
     .from("channel_members")
     .select("channel_id")
     .eq("user_id", user.id)
 
-  const joinedIds = new Set(memberships?.map(m => m.channel_id) || [])
+  const joinedIds = new Set<string>((memberships || []).map((m: { channel_id: string }) => m.channel_id))
 
   return (
     <DashboardShell>

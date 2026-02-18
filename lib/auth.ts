@@ -26,7 +26,7 @@ async function resolveUserIdFromAuthCandidate(user: { id?: string | null; email?
   return existing?.id ?? null
 }
 
-const providers = [
+const providers: any[] = [
   GitHub({
     clientId: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
@@ -55,7 +55,7 @@ if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
 }
 
 providers.push(
-  Passkey(),
+  Passkey({}),
   Credentials({
       name: "credentials",
       credentials: {
@@ -78,6 +78,10 @@ providers.push(
 
         if (!user.password) {
           return null
+        }
+
+        if (!user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED")
         }
 
         if (await isUserCurrentlyBanned(user.id)) {
@@ -190,10 +194,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return session
     },
-    async signIn({ user }) {
+    async signIn({ user, account }) {
       const userId = await resolveUserIdFromAuthCandidate({ id: user.id, email: user.email })
       if (!userId) return false
       if (await isUserCurrentlyBanned(userId)) return false
+
+      if (account?.provider === "credentials") {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { emailVerified: true },
+        })
+        if (!dbUser?.emailVerified) {
+          return "/auth/login?error=EmailNotVerified"
+        }
+      }
       return true
     },
   },

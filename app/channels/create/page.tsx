@@ -41,10 +41,11 @@ export default function CreateChannelPage() {
       setIsLoading(false)
       return
     }
+    const createdChannel = channel as { id: string }
 
     // Auto-join as member with owner role
     const { error: memberError } = await supabase.from("channel_members").insert({
-      channel_id: channel.id,
+      channel_id: createdChannel.id,
       user_id: user.id,
       role: "owner",
     })
@@ -56,7 +57,7 @@ export default function CreateChannelPage() {
     await supabase.rpc("add_xp", { p_user_id: user.id, p_amount: 10, p_reason: "Channel erstellt" })
 
     toast.success("Channel erstellt!")
-    router.push(`/channels/${channel.id}`)
+    router.push(`/channels/${createdChannel.id}`)
   }
 
   return (

@@ -474,7 +474,7 @@ export function BotsContent({
       }).select().single()
       
       if (!error && data) {
-        setSelectedBotRules([...selectedBotRules, data])
+        setSelectedBotRules([...selectedBotRules, data as BotActiveRule])
         toast.success("Regel aktiviert")
       }
     }
@@ -514,16 +514,17 @@ export function BotsContent({
       setIsLoading(false)
       return
     }
+    const createdBot = newBot as { id: string }
     
     // Upload images if provided
     let avatarUrl = null
     let bannerUrl = null
     
     if (avatarFile) {
-      avatarUrl = await uploadImage(avatarFile, newBot.id, "avatar")
+      avatarUrl = await uploadImage(avatarFile, createdBot.id, "avatar")
     }
     if (bannerFile) {
-      bannerUrl = await uploadImage(bannerFile, newBot.id, "banner")
+      bannerUrl = await uploadImage(bannerFile, createdBot.id, "banner")
     }
     
     // Update bot with image URLs if we have them
@@ -531,7 +532,7 @@ export function BotsContent({
       await supabase.from("bots").update({
         avatar_url: avatarUrl,
         banner_url: bannerUrl,
-      }).eq("id", newBot.id)
+      }).eq("id", createdBot.id)
     }
     
     await supabase.rpc("add_xp", { p_user_id: userId, p_amount: 10, p_reason: "Bot erstellt" })

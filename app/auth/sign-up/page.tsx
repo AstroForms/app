@@ -73,10 +73,7 @@ export default function SignUpPage() {
   }
 
   const handleOAuth = async (provider: "google" | "discord" | "github") => {
-    const result = await signIn(provider, { callbackUrl: "/" })
-    if (result?.error) {
-      setError(result.error)
-    }
+    await signIn(provider, { callbackUrl: "/" })
   }
 
   return (

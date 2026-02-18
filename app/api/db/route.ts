@@ -98,7 +98,7 @@ function parseOrExpression(table: string, expression: string) {
       }
       return null
     })
-    .filter(Boolean)
+    .filter((value): value is Record<string, unknown> => value !== null)
 
   return conditions.length > 0 ? conditions : null
 }

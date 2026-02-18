@@ -11,7 +11,7 @@ import { Prisma } from "@prisma/client"
 
 export async function getProfile(userId: string) {
   return prisma.profile.findUnique({
-    where: { userId },
+    where: { id: userId },
     include: {
       user: true,
     },
@@ -40,7 +40,7 @@ export async function updateProfile(data: {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.update({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
     data,
   })
 
@@ -85,7 +85,7 @@ export async function createChannel(data: {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -114,7 +114,7 @@ export async function joinChannel(channelId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
   
@@ -153,7 +153,7 @@ export async function leaveChannel(channelId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -205,7 +205,7 @@ export async function createPost(data: {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -228,7 +228,7 @@ export async function deletePost(postId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -252,7 +252,7 @@ export async function likePost(postId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -269,7 +269,7 @@ export async function unlikePost(postId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -288,7 +288,7 @@ export async function savePost(postId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -305,7 +305,7 @@ export async function unsavePost(postId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -336,7 +336,7 @@ export async function createComment(postId: string, content: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -358,7 +358,7 @@ export async function followUser(targetUserId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -405,7 +405,7 @@ export async function unfollowUser(targetUserId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -536,7 +536,7 @@ export async function createBot(data: {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -566,7 +566,7 @@ export async function updateBot(
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -592,7 +592,7 @@ export async function deleteBot(id: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -625,7 +625,7 @@ export async function toggleBotRule(
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -679,7 +679,7 @@ export async function inviteBotToChannel(botId: string, channelId: string) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -709,7 +709,7 @@ export async function respondToBotInvite(inviteId: string, accept: boolean) {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -744,7 +744,7 @@ export async function createReport(data: {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
 
@@ -765,7 +765,7 @@ export async function getAdminStats() {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
 
   if (!profile || !["ADMIN", "OWNER"].includes(profile.role)) {
@@ -792,7 +792,7 @@ export async function getPendingReports() {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { id: session.user.id },
   })
 
   if (!profile || !["ADMIN", "OWNER", "MODERATOR"].includes(profile.role)) {
@@ -805,3 +805,4 @@ export async function getPendingReports() {
     orderBy: { createdAt: "desc" },
   })
 }
+
