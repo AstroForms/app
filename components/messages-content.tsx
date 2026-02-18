@@ -149,7 +149,7 @@ const decryptMessage = async (encrypted: string, ivStr: string, key: CryptoKey):
     )
     return new TextDecoder().decode(decrypted)
   } catch {
-    return "[Nachricht konnte nicht entschlüsselt werden]"
+    return "[Alte verschlüsselte Nachricht]"
   }
 }
 
@@ -233,7 +233,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
               )
               return {
                 ...msg,
-                content: decrypted === "[Nachricht konnte nicht entschlÃ¼sselt werden]"
+                content: decrypted.includes("konnte nicht entschl")
                   ? "[Alte verschlüsselte Nachricht]"
                   : decrypted,
               }
@@ -362,7 +362,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
             const decrypted = await decryptMessage(msg.content_encrypted, msg.content_iv, encryptionKey)
             return {
               ...msg,
-              content: decrypted === "[Nachricht konnte nicht entschlÃ¼sselt werden]"
+              content: decrypted.includes("konnte nicht entschl")
                 ? "[Alte verschlüsselte Nachricht]"
                 : decrypted,
             }
