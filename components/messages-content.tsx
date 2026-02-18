@@ -222,20 +222,28 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
       .eq("conversation_id", selectedConversation.id)
       .order("created_at", { ascending: true })
 
-    if (!error && data) {
-      const decryptedMessages = await Promise.all(
-        data.map(async (msg: any) => {
-          if (msg.content_encrypted && msg.content_iv && encryptionKey) {
-            const decrypted = await decryptMessage(
-              msg.content_encrypted,
-              msg.content_iv,
-              encryptionKey
-            )
-            return { ...msg, content: decrypted }
-          }
-          return msg
-        })
-      )
+      if (!error && data) {
+        const decryptedMessages = await Promise.all(
+          data.map(async (msg: any) => {
+            if (msg.content_encrypted && msg.content_iv && encryptionKey) {
+              const decrypted = await decryptMessage(
+                msg.content_encrypted,
+                msg.content_iv,
+                encryptionKey
+              )
+              return {
+                ...msg,
+                content: decrypted === "[Nachricht konnte nicht entschlÃ¼sselt werden]"
+                  ? "[Alte verschlüsselte Nachricht]"
+                  : decrypted,
+              }
+            }
+            if (typeof msg.content_encrypted === "string" && !msg.content_iv) {
+              return { ...msg, content: msg.content_encrypted }
+            }
+            return msg
+          })
+        )
 
       setMessages(decryptedMessages)
       scrollToBottom()
@@ -352,7 +360,15 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
         (lastMessages || []).map(async (msg: any) => {
           if (msg.content_encrypted && msg.content_iv && encryptionKey) {
             const decrypted = await decryptMessage(msg.content_encrypted, msg.content_iv, encryptionKey)
-            return { ...msg, content: decrypted }
+            return {
+              ...msg,
+              content: decrypted === "[Nachricht konnte nicht entschlÃ¼sselt werden]"
+                ? "[Alte verschlüsselte Nachricht]"
+                : decrypted,
+            }
+          }
+          if (typeof msg.content_encrypted === "string" && !msg.content_iv) {
+            return { ...msg, content: msg.content_encrypted }
           }
           return msg
         })
@@ -622,11 +638,6 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
     setIsSending(true)
 
     try {
-      if (!encryptionKey) {
-        toast.error("Verschluesselungsschluessel fehlt")
-        setIsSending(false)
-        return
-      }
       let mediaUrl: string | null = null
       let mediaType: string | null = null
 
@@ -648,19 +659,9 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
         }
       }
 
-      // Encrypt message
-      let encrypted: string | null = null
-      let iv: string | null = null
-
-      if (messageInput.trim()) {
-        const encResult = await encryptMessage(messageInput, encryptionKey)
-        encrypted = encResult.encrypted
-        iv = encResult.iv
-      } else {
-        const encResult = await encryptMessage("", encryptionKey)
-        encrypted = encResult.encrypted
-        iv = encResult.iv
-      }
+      // Store cross-device readable content in DB.
+      const encrypted = messageInput.trim() || ""
+      const iv: string | null = null
 
       // Send message
       const optimisticId = `tmp-${Date.now()}`
@@ -714,15 +715,8 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
     if (!selectedConversation || isSending) return
 
     setIsSending(true)
-    if (!encryptionKey) {
-      toast.error("Verschluesselungsschluessel fehlt")
-      setIsSending(false)
-      return
-    }
-
-    const encResult = await encryptMessage("", encryptionKey)
-    const encrypted = encResult.encrypted
-    const iv = encResult.iv
+    const encrypted = ""
+    const iv: string | null = null
 
     const optimisticId = `tmp-gif-${Date.now()}`
     const createdAt = new Date().toISOString()
