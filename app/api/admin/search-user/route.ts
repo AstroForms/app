@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 
 const MAX_RESULTS = 10
+const MAX_LIST_RESULTS = 100
 
 async function requireAdmin() {
   const session = await auth()
@@ -29,15 +30,21 @@ export async function GET(req: NextRequest) {
     const { error } = await requireAdmin()
     if (error) return error
 
-    const username = new URL(req.url).searchParams.get("username")?.trim() ?? ""
-    if (!username) return NextResponse.json({ users: [] })
+    const url = new URL(req.url)
+    const username = url.searchParams.get("username")?.trim() ?? ""
+    const parsedLimit = Number(url.searchParams.get("limit"))
+    const limit = Number.isFinite(parsedLimit)
+      ? Math.min(Math.max(Math.trunc(parsedLimit), 1), MAX_LIST_RESULTS)
+      : MAX_RESULTS
 
     const users = await prisma.profile.findMany({
-      where: {
-        username: {
-          contains: username,
-        },
-      },
+      where: username
+        ? {
+            username: {
+              contains: username,
+            },
+          }
+        : undefined,
       select: {
         id: true,
         username: true,
@@ -47,7 +54,7 @@ export async function GET(req: NextRequest) {
       orderBy: {
         username: "asc",
       },
-      take: MAX_RESULTS,
+      take: limit,
     })
 
     return NextResponse.json({

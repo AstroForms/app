@@ -46,12 +46,11 @@ function resolveMediaUrl(value: string | null | undefined): string {
     return trimmed
   }
 
-  if (trimmed.startsWith("/")) {
-    return trimmed
-  }
-
-  const normalized = trimmed.replace(/^uploads\//, "")
-  return `/uploads/${normalized}`
+  const normalized = trimmed
+    .replace(/^\/+/, "")
+    .replace(/^uploads\//, "")
+    .replace(/^api\/media\//, "")
+  return `/api/media/${normalized}`
 }
 
 interface ChannelDetailProps {

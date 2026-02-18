@@ -18,6 +18,25 @@ import { toast } from "sonner"
 import { Settings, Camera, ImagePlus, User, Lock, Eye, EyeOff, Heart, Users, MessageCircle, Shield, UserX } from "lucide-react"
 import { KontenVerknuepfen } from "./konten-verknuepfen"
 
+function resolveMediaUrl(value: string | null | undefined): string {
+  if (!value) return ""
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("blob:")
+  ) {
+    return trimmed
+  }
+  const normalized = trimmed
+    .replace(/^\/+/, "")
+    .replace(/^uploads\//, "")
+    .replace(/^api\/media\//, "")
+  return `/api/media/${normalized}`
+}
+
 interface Profile {
   id: string
   username: string
@@ -58,8 +77,8 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
   const [isPrivate, setIsPrivate] = useState(profile?.is_private ?? false)
   const [showLikedPosts, setShowLikedPosts] = useState(profile?.show_liked_posts ?? true)
   const [dmPrivacy, setDmPrivacy] = useState<"everyone" | "followers" | "request" | "nobody">(profile?.dm_privacy ?? "everyone")
-  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "")
-  const [bannerUrl, setBannerUrl] = useState(profile?.banner_url || "")
+  const [avatarUrl, setAvatarUrl] = useState(resolveMediaUrl(profile?.avatar_url))
+  const [bannerUrl, setBannerUrl] = useState(resolveMediaUrl(profile?.banner_url))
   const [isLoading, setIsLoading] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
@@ -118,7 +137,7 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       .from("profiles")
       .getPublicUrl(filePath)
 
-    return publicUrl
+    return resolveMediaUrl(publicUrl)
   }
 
   const persistImageUrl = async (type: "avatar" | "banner", url: string) => {

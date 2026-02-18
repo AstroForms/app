@@ -14,8 +14,8 @@ function resolveMediaUrl(value: string | null | undefined): string | null {
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
     return trimmed
   }
-  const normalized = trimmed.replace(/^\/+/, "").replace(/^uploads\//, "")
-  return `/uploads/${normalized}`
+  const normalized = trimmed.replace(/^\/+/, "").replace(/^uploads\//, "").replace(/^api\/media\//, "")
+  return `/api/media/${normalized}`
 }
 
 interface BotItem {

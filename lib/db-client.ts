@@ -178,7 +178,8 @@ export function createDbClient() {
             return { data: { path: json.path || path }, error: null }
           },
           getPublicUrl(path: string) {
-            return { data: { publicUrl: `/uploads/${path}` } }
+            const normalized = path.replace(/^\/+/, "").replace(/^uploads\//, "")
+            return { data: { publicUrl: `/api/media/${normalized}` } }
           },
         }
       },

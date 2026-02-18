@@ -9,6 +9,12 @@ function normalizeAvatarSrc(src: string | undefined): string | undefined {
   if (!src) return src
   const trimmed = src.trim()
   if (!trimmed) return undefined
+  if (trimmed.startsWith('/uploads/')) {
+    return `/api/media/${trimmed.replace(/^\/uploads\//, '')}`
+  }
+  if (trimmed.startsWith('uploads/')) {
+    return `/api/media/${trimmed.replace(/^uploads\//, '')}`
+  }
   if (
     trimmed.startsWith('/') ||
     trimmed.startsWith('http://') ||

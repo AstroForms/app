@@ -3,6 +3,7 @@
 import { createDbClient } from "@/lib/db-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter
@@ -12,9 +13,9 @@ import {
 } from "@/components/ui/select"
 import {
   Shield, BadgeCheck, Flag, Ban, Hash, Bot,
-  CheckCircle, XCircle, Trash2, AlertTriangle, Lock, User, Clock
+  CheckCircle, XCircle, Trash2, AlertTriangle, Lock, User, Clock, Eye
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 // ...existing code...
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -84,15 +85,15 @@ export function AdminContent({
   const [modReason, setModReason] = useState("")
   const [userModAction, setUserModAction] = useState<string>("")
   const [userModDuration, setUserModDuration] = useState<string>("1d")
-  const [verifyUserInput, setVerifyUserInput] = useState("")
   type User = {
-    id: string;
-    username: string;
-    displayName?: string;
-    role?: string;
+    id: string
+    username: string
+    displayName?: string
+    role?: string
   }
   const [userSearchResults, setUserSearchResults] = useState<User[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
+  const [userFilter, setUserFilter] = useState("")
 
   const verifyChannel = async (channelId: string) => {
     const supabase = createDbClient()
@@ -122,8 +123,7 @@ export function AdminContent({
       }
       if (data?.success) {
         toast.success("Nutzer verifiziert!")
-        setVerifyUserInput("")
-        setUserSearchResults([])
+        await loadUsers()
         router.refresh()
       } else {
         toast.error(data?.error || "Fehler beim Verifizieren")
@@ -133,16 +133,10 @@ export function AdminContent({
     }
   }
 
-  const searchUserByUsername = async () => {
-    const query = verifyUserInput.trim()
-    if (!query) {
-      setUserSearchResults([])
-      return
-    }
-
+  const loadUsers = async () => {
     setSearchLoading(true)
     try {
-      const res = await fetch(`/api/admin/search-user?username=${encodeURIComponent(query)}`)
+      const res = await fetch("/api/admin/search-user?limit=100")
       const data = await res.json().catch(() => null)
       if (!res.ok) {
         throw new Error(data?.error || "Fehler bei der Suche")
@@ -155,6 +149,10 @@ export function AdminContent({
       setSearchLoading(false)
     }
   }
+
+  useEffect(() => {
+    void loadUsers()
+  }, [])
 
   const grantAdmin = async (profileId: string) => {
     if (!profileId.trim()) return
@@ -174,7 +172,32 @@ export function AdminContent({
       } else {
         toast.success("Admin-Rechte vergeben!")
       }
-      await searchUserByUsername()
+      await loadUsers()
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Rollen-Update")
+    }
+  }
+
+  const removeAdmin = async (profileId: string) => {
+    if (!profileId.trim()) return
+    try {
+      const res = await fetch("/api/admin/remove-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: profileId }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(data?.error || "Fehler beim Rollen-Update")
+      }
+
+      if (data?.alreadyUser) {
+        toast.info("Nutzer hat keine Admin-Rechte.")
+      } else {
+        toast.success("Admin-Rolle entfernt!")
+      }
+      await loadUsers()
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Fehler beim Rollen-Update")
@@ -325,6 +348,13 @@ export function AdminContent({
 
   // Filter only pending reports
   const pendingReports = reports.filter(r => r.status === "pending")
+  const filteredUsers = userSearchResults.filter((user) => {
+    const filterValue = userFilter.trim().toLowerCase()
+    if (!filterValue) return true
+    const username = user.username.toLowerCase()
+    const displayName = user.displayName?.toLowerCase() || ""
+    return username.includes(filterValue) || displayName.includes(filterValue)
+  })
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -600,25 +630,29 @@ export function AdminContent({
         <TabsContent value="users">
           <div className="glass rounded-xl p-6">
             <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-              <BadgeCheck className="h-4 w-4 text-primary" /> Nutzer verifizieren
+              <BadgeCheck className="h-4 w-4 text-primary" /> Nutzerliste & Rollen
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Suche nach Username und verifiziere mit einem Klick.
+              Alle Nutzer mit direkten Admin-Aktionen in einer Liste.
             </p>
             <div className="flex gap-2 mb-4">
               <Input 
-                placeholder="Username suchen..." 
+                placeholder="In Liste filtern..." 
                 className="bg-secondary/50 border-border/50 flex-1"
-                value={verifyUserInput}
-                onChange={(e) => setVerifyUserInput(e.target.value)}
+                value={userFilter}
+                onChange={(e) => setUserFilter(e.target.value)}
               />
-              <Button onClick={searchUserByUsername} disabled={searchLoading} className="text-primary-foreground">
-                Suchen
+              <Button onClick={loadUsers} disabled={searchLoading} className="text-primary-foreground">
+                Aktualisieren
               </Button>
             </div>
-            {userSearchResults.length > 0 && (
+            {searchLoading ? (
+              <p className="text-sm text-muted-foreground">Nutzer werden geladen...</p>
+            ) : filteredUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Keine Nutzer gefunden.</p>
+            ) : (
               <div className="flex flex-col gap-2">
-                {userSearchResults.map((user) => (
+                {filteredUsers.map((user) => (
                   <div key={user.id} className="glass rounded-xl p-4 flex items-center justify-between">
                     <div>
                       <p className="font-medium text-foreground text-sm">@{user.username}</p>
@@ -628,6 +662,11 @@ export function AdminContent({
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      <Button size="sm" variant="outline" asChild className="bg-transparent">
+                        <Link href={`/admin/users/${user.id}`}>
+                          <Eye className="h-3.5 w-3.5 mr-1" /> Benutzer ansehen
+                        </Link>
+                      </Button>
                       <Button size="sm" onClick={() => verifyUser(user.id)} className="text-primary-foreground">
                         <BadgeCheck className="h-3.5 w-3.5 mr-1" /> Verifizieren
                       </Button>
@@ -638,6 +677,15 @@ export function AdminContent({
                         disabled={user.role === "admin" || user.role === "owner"}
                       >
                         <Shield className="h-3.5 w-3.5 mr-1" /> Admin geben
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => removeAdmin(user.id)}
+                        disabled={user.role !== "admin"}
+                        className="bg-transparent"
+                      >
+                        <Shield className="h-3.5 w-3.5 mr-1" /> Admin entfernen
                       </Button>
                     </div>
                   </div>
