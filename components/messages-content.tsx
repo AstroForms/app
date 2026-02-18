@@ -153,7 +153,7 @@ const decryptMessage = async (encrypted: string, ivStr: string, key: CryptoKey):
 }
 
 // Tenor GIF API
-const TENOR_API_KEY = "AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ"
+const TENOR_API_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY
 
 export function MessagesContent({ currentUserId, targetUserId }: { currentUserId: string; targetUserId?: string }) {
   const supabase = useMemo(() => createDbClient(), [])
@@ -185,6 +185,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   const conversationsLoadingRef = useRef(false)
   const requestsLoadingRef = useRef(false)
   const messagesLoadingRef = useRef(false)
+  const tenorWarningShownRef = useRef(false)
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -505,6 +506,15 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
 
   // Search GIFs
   const searchGifs = useCallback(async (query: string) => {
+    if (!TENOR_API_KEY) {
+      setGifs([])
+      if (!tenorWarningShownRef.current) {
+        toast.error("GIF-Suche ist nicht konfiguriert")
+        tenorWarningShownRef.current = true
+      }
+      return
+    }
+
     if (!query) {
       // Load trending GIFs
       const res = await fetch(

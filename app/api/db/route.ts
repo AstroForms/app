@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth"
 
 type QueryFilter = {
   column: string
-  op: "eq" | "in"
+  op: "eq" | "neq" | "in" | "ilike" | "or"
   value: unknown
 }
 
@@ -79,19 +79,62 @@ function normalizeEnumOutput(table: string, column: string, value: unknown) {
   return value
 }
 
+function parseOrExpression(table: string, expression: string) {
+  const conditions = expression
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const [rawColumn, op, ...rawValueParts] = part.split(".")
+      const rawValue = rawValueParts.join(".")
+      if (!rawColumn || !op) return null
+      const field = mapFilterColumn(table, rawColumn)
+      if (op === "ilike") {
+        const normalized = normalizeEnumInput(table, rawColumn, rawValue.replace(/^%|%$/g, ""))
+        return { [field]: { contains: normalized } }
+      }
+      if (op === "eq") {
+        return { [field]: normalizeEnumInput(table, rawColumn, rawValue) }
+      }
+      return null
+    })
+    .filter(Boolean)
+
+  return conditions.length > 0 ? conditions : null
+}
+
 function mapFilters(table: string, filters: QueryFilter[]) {
   const where: Record<string, unknown> = {}
+  const orConditions: Array<Record<string, unknown>> = []
+
   for (const filter of filters || []) {
-    const field = mapFilterColumn(table, filter.column)
     if (filter.op === "eq") {
+      const field = mapFilterColumn(table, filter.column)
       where[field] = normalizeEnumInput(table, filter.column, filter.value)
+    } else if (filter.op === "neq") {
+      const field = mapFilterColumn(table, filter.column)
+      where[field] = { not: normalizeEnumInput(table, filter.column, filter.value) }
     } else if (filter.op === "in") {
+      const field = mapFilterColumn(table, filter.column)
       const values = Array.isArray(filter.value)
         ? filter.value.map((value) => normalizeEnumInput(table, filter.column, value))
         : filter.value
       where[field] = { in: values }
+    } else if (filter.op === "ilike") {
+      const field = mapFilterColumn(table, filter.column)
+      const rawValue = typeof filter.value === "string" ? filter.value : String(filter.value ?? "")
+      const normalized = normalizeEnumInput(table, filter.column, rawValue.replace(/^%|%$/g, ""))
+      where[field] = { contains: normalized }
+    } else if (filter.op === "or" && typeof filter.value === "string") {
+      const parsed = parseOrExpression(table, filter.value)
+      if (parsed) orConditions.push(...parsed)
     }
   }
+
+  if (orConditions.length > 0) {
+    where.OR = orConditions
+  }
+
   return where
 }
 
@@ -405,6 +448,42 @@ export async function POST(req: NextRequest) {
 
   if (action === "insert") {
     const created = await (model as any).create({ data: mappedData, include })
+    return NextResponse.json({ data: mapRecord(table, created), error: null })
+  }
+
+  if (action === "upsert") {
+    const payload = data && typeof data === "object" && "values" in data ? (data as any).values : data
+    if (Array.isArray(payload)) {
+      const rows = payload
+        .filter((row) => row && typeof row === "object")
+        .map((row) =>
+          Object.fromEntries(
+            Object.entries(row as Record<string, unknown>).map(([key, value]) => [
+              toCamel(key),
+              normalizeEnumInput(table, key, value),
+            ]),
+          ),
+        )
+
+      if (rows.length === 0) {
+        return NextResponse.json({ data: null, error: null })
+      }
+
+      await (model as any).createMany({ data: rows, skipDuplicates: true })
+      return NextResponse.json({ data: null, error: null })
+    }
+
+    if (!payload || typeof payload !== "object") {
+      return NextResponse.json({ error: "Invalid upsert payload" }, { status: 400 })
+    }
+
+    const row = Object.fromEntries(
+      Object.entries(payload as Record<string, unknown>).map(([key, value]) => [
+        toCamel(key),
+        normalizeEnumInput(table, key, value),
+      ]),
+    )
+    const created = await (model as any).create({ data: row, include })
     return NextResponse.json({ data: mapRecord(table, created), error: null })
   }
 

@@ -2,7 +2,7 @@ import { signOut } from "next-auth/react"
 
 type QueryFilter = {
   column: string
-  op: "eq" | "in" | "ilike"
+  op: "eq" | "neq" | "in" | "ilike" | "or"
   value: unknown
 }
 
@@ -16,7 +16,7 @@ type QueryState = {
   head?: boolean
   single?: boolean
   maybeSingle?: boolean
-  action?: "select" | "insert" | "update" | "delete"
+  action?: "select" | "insert" | "update" | "delete" | "upsert"
   data?: unknown
 }
 
@@ -53,6 +53,11 @@ class QueryBuilder {
     return this
   }
 
+  neq(column: string, value: unknown) {
+    this.state.filters.push({ column, op: "neq", value })
+    return this
+  }
+
   in(column: string, value: unknown[]) {
     this.state.filters.push({ column, op: "in", value })
     return this
@@ -60,6 +65,11 @@ class QueryBuilder {
 
   ilike(column: string, value: string) {
     this.state.filters.push({ column, op: "ilike", value })
+    return this
+  }
+
+  or(expression: string) {
+    this.state.filters.push({ column: "__or__", op: "or", value: expression })
     return this
   }
 
@@ -85,7 +95,7 @@ class QueryBuilder {
     return this.execute(action, this.state.data)
   }
 
-  async execute(action: "select" | "insert" | "update" | "delete", data?: unknown) {
+  async execute(action: "select" | "insert" | "update" | "delete" | "upsert", data?: unknown) {
     return requestDb<{ data: unknown; error: string | null; count?: number }>({
       action,
       ...this.state,
@@ -107,6 +117,12 @@ class QueryBuilder {
 
   delete() {
     this.state.action = "delete"
+    return this
+  }
+
+  upsert(data: unknown, options?: Record<string, unknown>) {
+    this.state.action = "upsert"
+    this.state.data = { values: data, options }
     return this
   }
 
