@@ -18,16 +18,28 @@ const callbackCookieName = isProd ? "__Secure-authjs.callback-url" : "authjs.cal
 function normalizeAuthSecret(value?: string) {
   if (!value) return ""
   const trimmed = value.trim()
-  if (
+  const unquoted =
     (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
     (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return trimmed.slice(1, -1)
-  }
-  return trimmed
+      ? trimmed.slice(1, -1)
+      : trimmed
+
+  // Some process managers/shell layers treat backslashes differently.
+  // Canonicalize to avoid per-instance secret drift.
+  return unquoted.replace(/\\/g, "")
 }
 
-const authSecret = normalizeAuthSecret(process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET)
+const authSecretFromAuth = normalizeAuthSecret(process.env.AUTH_SECRET)
+const authSecretFromNextAuth = normalizeAuthSecret(process.env.NEXTAUTH_SECRET)
+if (
+  isProd &&
+  authSecretFromAuth &&
+  authSecretFromNextAuth &&
+  authSecretFromAuth !== authSecretFromNextAuth
+) {
+  throw new Error("AUTH_SECRET and NEXTAUTH_SECRET differ in production")
+}
+const authSecret = authSecretFromAuth || authSecretFromNextAuth
 if (isProd && !authSecret) {
   throw new Error("Missing AUTH_SECRET/NEXTAUTH_SECRET in production")
 }
