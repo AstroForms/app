@@ -65,7 +65,7 @@ export async function listAuditLogs(limit = 100) {
   await ensureAuditTables()
   const cappedLimit = Math.min(Math.max(Math.trunc(limit), 1), 500)
 
-  const rows = await prisma.$queryRaw<AuditLogItem[]>`
+  const rows = await prisma.$queryRaw<(Omit<AuditLogItem, "created_at"> & { created_at: Date | string })[]>`
     SELECT
       l.\`id\`,
       l.\`created_at\`,
@@ -82,7 +82,10 @@ export async function listAuditLogs(limit = 100) {
     LIMIT ${cappedLimit}
   `
 
-  return rows
+  return rows.map((row) => ({
+    ...row,
+    created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+  }))
 }
 
 async function sendAuditToDiscord(log: {
