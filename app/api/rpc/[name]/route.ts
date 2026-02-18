@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { randomUUID } from "crypto"
 
 function pickString(body: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
@@ -115,9 +116,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
       },
     })
     if (existing) {
+      if (!existing.encryptionKeyId) {
+        await prisma.conversation.update({
+          where: { id: existing.id },
+          data: { encryptionKeyId: randomUUID() },
+        })
+      }
       return NextResponse.json({ data: existing.id })
     }
-    const convo = await prisma.conversation.create({ data: {} })
+    const convo = await prisma.conversation.create({ data: { encryptionKeyId: randomUUID() } })
     await prisma.conversationParticipant.createMany({
       data: [
         { conversationId: convo.id, userId: userA },
@@ -156,16 +163,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
           every: { userId: { in: [request.senderId, request.recipientId] } },
         },
       },
-      select: { id: true },
+      select: { id: true, encryptionKeyId: true },
     })
 
     if (!existing) {
-      const convo = await prisma.conversation.create({ data: {} })
+      const convo = await prisma.conversation.create({ data: { encryptionKeyId: randomUUID() } })
       await prisma.conversationParticipant.createMany({
         data: [
           { conversationId: convo.id, userId: request.senderId },
           { conversationId: convo.id, userId: request.recipientId },
         ],
+      })
+    } else if (!existing.encryptionKeyId) {
+      await prisma.conversation.update({
+        where: { id: existing.id },
+        data: { encryptionKeyId: randomUUID() },
       })
     }
 

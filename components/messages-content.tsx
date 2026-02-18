@@ -153,6 +153,18 @@ const decryptMessage = async (encrypted: string, ivStr: string, key: CryptoKey):
   }
 }
 
+function normalizeLegacyContent(value: string | null | undefined) {
+  if (!value) return value ?? null
+  const lowered = value.toLowerCase()
+  if (
+    lowered.includes("nachricht konnte nicht entschl") ||
+    lowered.includes("could not be decrypted")
+  ) {
+    return "[Alte verschlüsselte Nachricht]"
+  }
+  return value
+}
+
 // Tenor GIF API
 const TENOR_API_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY
 
@@ -222,31 +234,43 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
       .eq("conversation_id", selectedConversation.id)
       .order("created_at", { ascending: true })
 
-      if (!error && data) {
-        const decryptedMessages = await Promise.all(
-          data.map(async (msg: any) => {
-            if (msg.content_encrypted && msg.content_iv && encryptionKey) {
-              const decrypted = await decryptMessage(
-                msg.content_encrypted,
-                msg.content_iv,
-                encryptionKey
-              )
-              return {
-                ...msg,
-                content: decrypted.includes("konnte nicht entschl")
-                  ? "[Alte verschlüsselte Nachricht]"
-                  : decrypted,
-              }
+    if (!error && data) {
+      const migrations: Array<{ id: string; content: string }> = []
+      const decryptedMessages = await Promise.all(
+        data.map(async (msg: any) => {
+          if (msg.content_encrypted && msg.content_iv && encryptionKey) {
+            const decrypted = await decryptMessage(
+              msg.content_encrypted,
+              msg.content_iv,
+              encryptionKey
+            )
+            const normalized = normalizeLegacyContent(decrypted) || ""
+            migrations.push({ id: msg.id, content: normalized })
+            return {
+              ...msg,
+              content: normalized,
             }
-            if (typeof msg.content_encrypted === "string" && !msg.content_iv) {
-              return { ...msg, content: msg.content_encrypted }
-            }
+          }
+          if (typeof msg.content_encrypted === "string" && !msg.content_iv) {
+            return { ...msg, content: normalizeLegacyContent(msg.content_encrypted) }
+          }
             return msg
           })
         )
 
       setMessages(decryptedMessages)
       scrollToBottom()
+
+      if (migrations.length > 0) {
+        await Promise.all(
+          migrations.map((item) =>
+            supabase
+              .from("messages")
+              .update({ content_encrypted: item.content, content_iv: null })
+              .eq("id", item.id),
+          ),
+        )
+      }
 
       await supabase
         .from("message_read_receipts")
@@ -356,23 +380,35 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
         .in("conversation_id", conversationIds)
         .order("created_at", { ascending: false })
 
+      const lastMessageMigrations: Array<{ id: string; content: string }> = []
       const decryptedLastMessages = await Promise.all(
         (lastMessages || []).map(async (msg: any) => {
           if (msg.content_encrypted && msg.content_iv && encryptionKey) {
             const decrypted = await decryptMessage(msg.content_encrypted, msg.content_iv, encryptionKey)
+            const normalized = normalizeLegacyContent(decrypted) || ""
+            lastMessageMigrations.push({ id: msg.id, content: normalized })
             return {
               ...msg,
-              content: decrypted.includes("konnte nicht entschl")
-                ? "[Alte verschlüsselte Nachricht]"
-                : decrypted,
+              content: normalized,
             }
           }
           if (typeof msg.content_encrypted === "string" && !msg.content_iv) {
-            return { ...msg, content: msg.content_encrypted }
+            return { ...msg, content: normalizeLegacyContent(msg.content_encrypted) }
           }
           return msg
         })
       )
+
+      if (lastMessageMigrations.length > 0) {
+        await Promise.all(
+          lastMessageMigrations.map((item) =>
+            supabase
+              .from("messages")
+              .update({ content_encrypted: item.content, content_iv: null })
+              .eq("id", item.id),
+          ),
+        )
+      }
 
       // Build conversation objects
       const convos: Conversation[] = participations?.map((p: any) => {
@@ -469,8 +505,8 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
       if (canSend === false) {
         // Need to send request
         const { error } = await supabase.rpc("send_dm_request", {
-          p_from_user_id: currentUserId,
-          p_to_user_id: targetUserId
+          p_sender_id: currentUserId,
+          p_recipient_id: targetUserId
         })
 
         if (!error) {
@@ -483,8 +519,8 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
 
       // Create conversation
       const { data: convoId, error } = await supabase.rpc("get_or_create_dm_conversation", {
-        p_user1_id: currentUserId,
-        p_user2_id: targetUserId
+        p_user_id: currentUserId,
+        p_target_id: targetUserId
       })
 
       if (!error && convoId) {
@@ -505,6 +541,29 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
     }, 2500)
     return () => clearInterval(interval)
   }, [selectedConversation, loadMessages, isPageVisible])
+
+  // Live updates via SSE for near-instant incoming messages.
+  useEffect(() => {
+    if (!selectedConversation || !isPageVisible) return
+
+    const since = selectedConversation.last_message_at || new Date().toISOString()
+    const url = `/api/messages/stream?conversationId=${encodeURIComponent(selectedConversation.id)}&since=${encodeURIComponent(since)}`
+    const source = new EventSource(url)
+
+    const onUpdate = () => {
+      void loadMessages()
+    }
+
+    source.addEventListener("update", onUpdate)
+    source.onerror = () => {
+      // Polling remains as fallback.
+    }
+
+    return () => {
+      source.removeEventListener("update", onUpdate)
+      source.close()
+    }
+  }, [selectedConversation, isPageVisible, loadMessages])
 
   // Search users to start conversation
   const searchUsers = useCallback(async (query: string) => {
