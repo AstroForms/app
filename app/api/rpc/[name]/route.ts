@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 
+function pickString(body: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = body[key]
+    if (typeof value === "string" && value.trim()) return value.trim()
+  }
+  return ""
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ name: string }> }) {
   const session = await auth()
   if (!session?.user?.id) {
@@ -52,24 +60,55 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
   }
 
   if (name === "can_send_dm") {
+    const senderId = pickString(body, ["p_sender_id", "p_from_user_id"])
+    const recipientId = pickString(body, ["p_receiver_id", "p_to_user_id"])
+    if (!senderId || !recipientId) {
+      return NextResponse.json({ error: "Missing DM participants" }, { status: 400 })
+    }
+    if (senderId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
     return NextResponse.json({ data: true })
   }
 
   if (name === "send_dm_request") {
-    const senderId = body.p_sender_id as string
-    const recipientId = body.p_recipient_id as string
+    const senderId = pickString(body, ["p_sender_id", "p_from_user_id"])
+    const recipientId = pickString(body, ["p_recipient_id", "p_to_user_id"])
     const messagePreview = body.p_message_preview as string | undefined
-    await prisma.dmRequest.create({
-      data: { senderId, recipientId, messagePreview: messagePreview || null },
+    if (!senderId || !recipientId) {
+      return NextResponse.json({ error: "Missing DM request users" }, { status: 400 })
+    }
+    if (senderId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    await prisma.dmRequest.upsert({
+      where: { senderId_recipientId: { senderId, recipientId } },
+      create: { senderId, recipientId, messagePreview: messagePreview || null, status: "PENDING" },
+      update: { messagePreview: messagePreview || null, status: "PENDING" },
     })
     return NextResponse.json({ data: true })
   }
 
   if (name === "get_or_create_dm_conversation") {
-    const userA = body.p_user_id as string
-    const userB = body.p_target_id as string
+    const userA = pickString(body, ["p_user_id", "p_user1_id"])
+    const userB = pickString(body, ["p_target_id", "p_user2_id"])
+    if (!userA || !userB) {
+      return NextResponse.json({ error: "Missing conversation users" }, { status: 400 })
+    }
+    if (userA !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    if (userA === userB) {
+      return NextResponse.json({ error: "Cannot create self conversation" }, { status: 400 })
+    }
+
     const existing = await prisma.conversation.findFirst({
       where: {
+        isGroup: false,
+        AND: [
+          { participants: { some: { userId: userA } } },
+          { participants: { some: { userId: userB } } },
+        ],
         participants: {
           every: { userId: { in: [userA, userB] } },
         },
@@ -90,9 +129,64 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
 
   if (name === "accept_dm_request") {
     const requestId = body.p_request_id as string
-    await prisma.dmRequest.update({
+    const existingRequest = await prisma.dmRequest.findUnique({
+      where: { id: requestId },
+      select: { senderId: true, recipientId: true },
+    })
+    if (!existingRequest) {
+      return NextResponse.json({ error: "Request not found" }, { status: 404 })
+    }
+    if (existingRequest.recipientId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    const request = await prisma.dmRequest.update({
       where: { id: requestId },
       data: { status: "ACCEPTED" },
+      select: { senderId: true, recipientId: true },
+    })
+
+    const existing = await prisma.conversation.findFirst({
+      where: {
+        isGroup: false,
+        AND: [
+          { participants: { some: { userId: request.senderId } } },
+          { participants: { some: { userId: request.recipientId } } },
+        ],
+        participants: {
+          every: { userId: { in: [request.senderId, request.recipientId] } },
+        },
+      },
+      select: { id: true },
+    })
+
+    if (!existing) {
+      const convo = await prisma.conversation.create({ data: {} })
+      await prisma.conversationParticipant.createMany({
+        data: [
+          { conversationId: convo.id, userId: request.senderId },
+          { conversationId: convo.id, userId: request.recipientId },
+        ],
+      })
+    }
+
+    return NextResponse.json({ data: true })
+  }
+
+  if (name === "decline_dm_request") {
+    const requestId = body.p_request_id as string
+    const request = await prisma.dmRequest.findUnique({
+      where: { id: requestId },
+      select: { recipientId: true },
+    })
+    if (!request) {
+      return NextResponse.json({ error: "Request not found" }, { status: 404 })
+    }
+    if (request.recipientId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    await prisma.dmRequest.update({
+      where: { id: requestId },
+      data: { status: "REJECTED" },
     })
     return NextResponse.json({ data: true })
   }

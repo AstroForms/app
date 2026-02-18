@@ -39,8 +39,8 @@ import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react"
 // Types
 interface Profile {
   id: string
-  username: string
-  display_name: string
+  username: string | null
+  display_name: string | null
   avatar_url: string | null
 }
 
@@ -78,6 +78,7 @@ interface Message {
   created_at: string
   sender?: Profile
   read_by?: string[]
+  is_pending?: boolean
 }
 
 interface DMRequest {
@@ -168,6 +169,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   const [conversationSearch, setConversationSearch] = useState("")
   const [searchResults, setSearchResults] = useState<Profile[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [startingConversationUserId, setStartingConversationUserId] = useState<string | null>(null)
   const [showNewConversation, setShowNewConversation] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showGifPicker, setShowGifPicker] = useState(false)
@@ -186,6 +188,72 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   const requestsLoadingRef = useRef(false)
   const messagesLoadingRef = useRef(false)
   const tenorWarningShownRef = useRef(false)
+  const searchRequestIdRef = useRef(0)
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }, 100)
+  }
+
+  const updateConversationPreview = useCallback((conversationId: string, preview: Message, createdAt: string) => {
+    setConversations((prev) => prev.map((conversation) => (
+      conversation.id === conversationId
+        ? { ...conversation, last_message: preview, last_message_at: createdAt }
+        : conversation
+    )))
+  }, [])
+
+  const loadMessages = useCallback(async () => {
+    if (!selectedConversation || messagesLoadingRef.current) return
+    messagesLoadingRef.current = true
+
+    const { data, error } = await supabase
+      .from("messages")
+      .select(`
+        *,
+        sender:profiles!messages_sender_id_fkey (
+          id,
+          username,
+          display_name,
+          avatar_url
+        )
+      `)
+      .eq("conversation_id", selectedConversation.id)
+      .order("created_at", { ascending: true })
+
+    if (!error && data) {
+      const decryptedMessages = await Promise.all(
+        data.map(async (msg: any) => {
+          if (msg.content_encrypted && msg.content_iv && encryptionKey) {
+            const decrypted = await decryptMessage(
+              msg.content_encrypted,
+              msg.content_iv,
+              encryptionKey
+            )
+            return { ...msg, content: decrypted }
+          }
+          return msg
+        })
+      )
+
+      setMessages(decryptedMessages)
+      scrollToBottom()
+
+      await supabase
+        .from("message_read_receipts")
+        .upsert(
+          data.filter((m: any) => m.sender_id !== currentUserId).map((m: any) => ({
+            message_id: m.id,
+            user_id: currentUserId,
+            read_at: new Date().toISOString()
+          })),
+          { onConflict: "message_id,user_id" }
+        )
+    }
+
+    messagesLoadingRef.current = false
+  }, [selectedConversation, supabase, encryptionKey, currentUserId])
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -415,86 +483,36 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   useEffect(() => {
     if (!selectedConversation) return
 
-    const loadMessages = async () => {
-      if (messagesLoadingRef.current) return
-      messagesLoadingRef.current = true
-      const { data, error } = await supabase
-        .from("messages")
-        .select(`
-          *,
-          sender:profiles!messages_sender_id_fkey (
-            id,
-            username,
-            display_name,
-            avatar_url
-          )
-        `)
-        .eq("conversation_id", selectedConversation.id)
-        .order("created_at", { ascending: true })
-
-      if (!error && data) {
-        // Decrypt messages
-        const decryptedMessages = await Promise.all(
-          data.map(async (msg: any) => {
-            if (msg.content_encrypted && msg.content_iv && encryptionKey) {
-              const decrypted = await decryptMessage(
-                msg.content_encrypted,
-                msg.content_iv,
-                encryptionKey
-              )
-              return { ...msg, content: decrypted }
-            }
-            return msg
-          })
-        )
-        setMessages(decryptedMessages)
-        scrollToBottom()
-        
-        // Mark messages as read
-        await supabase
-          .from("message_read_receipts")
-          .upsert(
-            data.filter((m: any) => m.sender_id !== currentUserId).map((m: any) => ({
-              message_id: m.id,
-              user_id: currentUserId,
-              read_at: new Date().toISOString()
-            })),
-            { onConflict: "message_id,user_id" }
-          )
-      }
-      messagesLoadingRef.current = false
-    }
-
     loadMessages()
     const interval = setInterval(() => {
       if (isPageVisible) loadMessages()
-    }, 10000)
+    }, 2500)
     return () => clearInterval(interval)
-  }, [selectedConversation, encryptionKey, currentUserId, supabase, isPageVisible])
-
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-    }, 100)
-  }
+  }, [selectedConversation, loadMessages, isPageVisible])
 
   // Search users to start conversation
   const searchUsers = useCallback(async (query: string) => {
-    if (query.length < 2) {
+    const normalizedQuery = query.trim()
+    if (normalizedQuery.length < 2) {
+      searchRequestIdRef.current += 1
       setSearchResults([])
+      setIsSearching(false)
       return
     }
 
+    const requestId = ++searchRequestIdRef.current
     setIsSearching(true)
     const { data } = await supabase
       .from("profiles")
       .select("id, username, display_name, avatar_url")
       .neq("id", currentUserId)
-      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .or(`username.ilike.%${normalizedQuery}%,display_name.ilike.%${normalizedQuery}%`)
       .limit(10)
 
-    setSearchResults(data || [])
-    setIsSearching(false)
+    if (requestId === searchRequestIdRef.current) {
+      setSearchResults(data || [])
+      setIsSearching(false)
+    }
   }, [currentUserId, supabase])
 
   useEffect(() => {
@@ -543,6 +561,9 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
 
   // Start new conversation
   const startConversation = async (userId: string) => {
+    if (startingConversationUserId) return
+    setStartingConversationUserId(userId)
+
     // Check if conversation already exists
     const existingConvo = conversations.find(c => 
       !c.is_group && c.participants.some(p => p.user_id === userId)
@@ -552,6 +573,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
       setSelectedConversation(existingConvo)
       setShowNewConversation(false)
       setMobileShowChat(true)
+      setStartingConversationUserId(null)
       return
     }
 
@@ -564,27 +586,33 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
     if (canSend === false) {
       // Need to send request
       const { error } = await supabase.rpc("send_dm_request", {
-        p_from_user_id: currentUserId,
-        p_to_user_id: userId
+        p_sender_id: currentUserId,
+        p_recipient_id: userId
       })
 
       if (!error) {
         toast.success("DM-Anfrage gesendet")
+      } else {
+        toast.error("Konnte keine Anfrage senden")
       }
       setShowNewConversation(false)
+      setStartingConversationUserId(null)
       return
     }
 
     // Create conversation
     const { data: convoId, error } = await supabase.rpc("get_or_create_dm_conversation", {
-      p_user1_id: currentUserId,
-      p_user2_id: userId
+      p_user_id: currentUserId,
+      p_target_id: userId
     })
 
     if (!error && convoId) {
       // Reload conversations
       window.location.reload()
+      return
     }
+    toast.error("Konversation konnte nicht erstellt werden")
+    setStartingConversationUserId(null)
   }
 
   // Send message
@@ -635,11 +663,32 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
       }
 
       // Send message
+      const optimisticId = `tmp-${Date.now()}`
+      const createdAt = new Date().toISOString()
+      const optimisticMessage: Message = {
+        id: optimisticId,
+        conversation_id: selectedConversation.id,
+        sender_id: currentUserId,
+        content: messageInput.trim() || null,
+        content_encrypted: encrypted,
+        content_iv: iv,
+        media_url: mediaUrl,
+        media_type: mediaType,
+        gif_url: null,
+        is_deleted: false,
+        created_at: createdAt,
+        is_pending: true,
+      }
+      setMessages((prev) => [...prev, optimisticMessage])
+      updateConversationPreview(selectedConversation.id, optimisticMessage, createdAt)
+      scrollToBottom()
+
       const { error } = await supabase.from("messages").insert({
         conversation_id: selectedConversation.id,
         sender_id: currentUserId,
         content_encrypted: encrypted,
         content_iv: iv,
+        reactions: {},
         media_url: mediaUrl,
         media_type: mediaType
       })
@@ -648,7 +697,9 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
         setMessageInput("")
         setSelectedImage(null)
         setImagePreview(null)
-        scrollToBottom()
+        await loadMessages()
+      } else {
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
       }
     } catch (error) {
       console.error("Error sending message:", error)
@@ -673,17 +724,40 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
     const encrypted = encResult.encrypted
     const iv = encResult.iv
 
+    const optimisticId = `tmp-gif-${Date.now()}`
+    const createdAt = new Date().toISOString()
+    const optimisticGif: Message = {
+      id: optimisticId,
+      conversation_id: selectedConversation.id,
+      sender_id: currentUserId,
+      content: null,
+      content_encrypted: encrypted,
+      content_iv: iv,
+      media_url: null,
+      media_type: null,
+      gif_url: gifUrl,
+      is_deleted: false,
+      created_at: createdAt,
+      is_pending: true,
+    }
+    setMessages((prev) => [...prev, optimisticGif])
+    updateConversationPreview(selectedConversation.id, optimisticGif, createdAt)
+    scrollToBottom()
+
     const { error } = await supabase.from("messages").insert({
       conversation_id: selectedConversation.id,
       sender_id: currentUserId,
       content_encrypted: encrypted,
       content_iv: iv,
+      reactions: {},
       gif_url: gifUrl
     })
 
     if (!error) {
       setShowGifPicker(false)
-      scrollToBottom()
+      await loadMessages()
+    } else {
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
     }
 
     setIsSending(false)
@@ -755,7 +829,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   }
 
   // Conversation list
-  const ConversationList = () => (
+  const renderConversationList = () => (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b border-border/50">
         <div className="flex items-center justify-between mb-4">
@@ -908,7 +982,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   )
 
   // Chat view
-  const ChatView = () => {
+  const renderChatView = () => {
     if (!selectedConversation) {
       return (
         <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
@@ -961,7 +1035,9 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
               return (
                 <div
                   key={message.id}
-                  className={`flex items-end gap-2 ${isOwn ? "flex-row-reverse" : ""}`}
+                  className={`flex items-end gap-2 ${isOwn ? "flex-row-reverse" : ""} ${
+                    message.is_pending ? "animate-pulse" : "animate-in fade-in slide-in-from-bottom-2 duration-300"
+                  }`}
                 >
                   {showAvatar ? (
                     <Avatar className="h-8 w-8">
@@ -1156,7 +1232,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   }
 
   // New Conversation Dialog
-  const NewConversationDialog = () => (
+  const renderNewConversationDialog = () => (
     <Dialog open={showNewConversation} onOpenChange={setShowNewConversation}>
       <DialogContent>
         <DialogHeader>
@@ -1179,15 +1255,16 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
                 <button
                   key={user.id}
                   onClick={() => startConversation(user.id)}
+                  disabled={startingConversationUserId !== null}
                   className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors"
                 >
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user.avatar_url || ""} />
-                    <AvatarFallback>{user.display_name[0]}</AvatarFallback>
+                    <AvatarFallback>{(user.display_name || user.username || "U")[0]?.toUpperCase() || "U"}</AvatarFallback>
                   </Avatar>
                   <div className="text-left">
-                    <p className="font-medium">{user.display_name}</p>
-                    <p className="text-sm text-muted-foreground">@{user.username}</p>
+                    <p className="font-medium">{user.display_name || user.username || "Unbekannt"}</p>
+                    <p className="text-sm text-muted-foreground">@{user.username || "unknown"}</p>
                   </div>
                 </button>
               ))}
@@ -1211,23 +1288,23 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
       {/* Desktop: Side by side */}
       <div className="hidden md:flex w-full">
         <div className="w-80 border-r border-border/50">
-          <ConversationList />
+          {renderConversationList()}
         </div>
         <div className="flex-1">
-          <ChatView />
+          {renderChatView()}
         </div>
       </div>
 
       {/* Mobile: Toggle between list and chat */}
       <div className="md:hidden w-full">
         {mobileShowChat && selectedConversation ? (
-          <ChatView />
+          renderChatView()
         ) : (
-          <ConversationList />
+          renderConversationList()
         )}
       </div>
 
-      <NewConversationDialog />
+      {renderNewConversationDialog()}
     </div>
   )
 }

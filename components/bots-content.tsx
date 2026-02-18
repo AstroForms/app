@@ -637,17 +637,27 @@ export function BotsContent({
 
   const handleCreateAutomation = async () => {
     if (!autoName.trim() || !triggerType || !actionType) return
+    if (!selectedBot) {
+      toast.error("Bitte einen Bot auswählen.")
+      return
+    }
+    const actionNeedsChannel = ["send_post", "send_reply", "send_welcome", "send_reminder", "send_announcement", "auto_comment"]
+      .includes(actionType)
+    if (actionNeedsChannel && !selectedChannel) {
+      toast.error("Bitte einen Ziel-Channel auswählen.")
+      return
+    }
     setIsLoading(true)
     const supabase = createDbClient()
     const { error } = await supabase.from("automations").insert({
       name: autoName,
       description: autoDesc || null,
-      user_id: userId,
-      bot_id: selectedBot || null,
+      bot_id: selectedBot,
       trigger_type: triggerType,
       trigger_config: buildTriggerConfig(),
       action_type: actionType,
       action_config: buildActionConfig(),
+      channel_id: selectedChannel || null,
       cooldown_seconds: parseInt(cooldownSeconds) || 0,
     })
     if (error) {
@@ -934,7 +944,16 @@ export function BotsContent({
 
         <TabsContent value="automations">
           <div className="flex justify-end mb-4">
-            <Dialog open={showCreateAutomation} onOpenChange={(open) => { setShowCreateAutomation(open); if (!open) resetAutomationForm(); }}>
+            <Dialog
+              open={showCreateAutomation}
+              onOpenChange={(open) => {
+                setShowCreateAutomation(open)
+                if (open && bots.length > 0) {
+                  setSelectedBot((prev) => prev || bots[0].id)
+                }
+                if (!open) resetAutomationForm()
+              }}
+            >
               <DialogTrigger asChild>
                 <Button className="text-primary-foreground"><Plus className="h-4 w-4 mr-2" /> Automation erstellen</Button>
               </DialogTrigger>
@@ -1191,10 +1210,10 @@ export function BotsContent({
                       </div>
                     )}
 
-                    {/* Optional Bot */}
+                    {/* Bot (required) */}
                     {bots.length > 0 && (
                       <div className="grid gap-2">
-                        <Label className="text-foreground">Bot zuweisen (optional)</Label>
+                        <Label className="text-foreground">Bot auswählen</Label>
                         <Select value={selectedBot} onValueChange={setSelectedBot}>
                           <SelectTrigger className="bg-secondary/50 border-border/50 text-foreground"><SelectValue placeholder="Bot wählen..." /></SelectTrigger>
                           <SelectContent>
@@ -1203,11 +1222,29 @@ export function BotsContent({
                         </Select>
                       </div>
                     )}
+                    {bots.length === 0 && (
+                      <div className="rounded-lg border border-border/50 bg-secondary/20 p-3 text-sm text-muted-foreground">
+                        Du brauchst mindestens einen Bot, um eine Automation zu erstellen.
+                        {" "}
+                        <Link href="/bots" className="text-primary underline underline-offset-2">
+                          Bot jetzt erstellen
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
                 <div className="pt-4 border-t border-border/30">
-                  <Button onClick={handleCreateAutomation} disabled={isLoading || !autoName.trim() || !triggerType || !actionType} className="w-full text-primary-foreground">
+                  <Button
+                    onClick={handleCreateAutomation}
+                    disabled={
+                      isLoading ||
+                      !autoName.trim() ||
+                      !triggerType ||
+                      !actionType
+                    }
+                    className="w-full text-primary-foreground"
+                  >
                     {isLoading ? "Erstellen..." : "Automation erstellen"}
                   </Button>
                 </div>

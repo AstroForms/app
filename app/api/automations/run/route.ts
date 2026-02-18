@@ -131,7 +131,7 @@ export async function POST() {
     const contentTemplate = String(actionConfig.content || "")
 
     if (
-      ["send_post", "send_announcement", "send_reminder"].includes(
+      ["send_post", "send_announcement", "send_reminder", "send_welcome", "send_reply", "auto_comment"].includes(
         automation.actionType,
       )
     ) {
@@ -179,7 +179,7 @@ export async function POST() {
           triggerType: automation.triggerType,
           channelId,
           details: { info: "Action not implemented; logged only." },
-          success: true,
+          success: false,
         },
       })
     }
