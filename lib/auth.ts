@@ -80,10 +80,6 @@ providers.push(
           return null
         }
 
-        if (!user.emailVerified) {
-          throw new Error("EMAIL_NOT_VERIFIED")
-        }
-
         if (await isUserCurrentlyBanned(user.id)) {
           return null
         }
@@ -194,20 +190,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return session
     },
-    async signIn({ user, account }) {
+    async signIn({ user }) {
       const userId = await resolveUserIdFromAuthCandidate({ id: user.id, email: user.email })
       if (!userId) return false
       if (await isUserCurrentlyBanned(userId)) return false
-
-      if (account?.provider === "credentials") {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { emailVerified: true },
-        })
-        if (!dbUser?.emailVerified) {
-          return "/auth/login?error=EmailNotVerified"
-        }
-      }
       return true
     },
   },

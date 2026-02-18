@@ -2,7 +2,6 @@ export const runtime = "nodejs" // Required for bcrypt and Prisma
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
-import { createEmailVerificationToken, sendVerificationEmail } from "@/lib/email-verification"
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,13 +36,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    const token = await createEmailVerificationToken(user.email!)
-    await sendVerificationEmail(user.email!, token)
-
-    return NextResponse.json(
-      { user: { id: user.id, email: user.email, name: user.name }, requiresEmailVerification: true },
-      { status: 201 },
-    )
+    return NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } }, { status: 201 })
   } catch (error) {
     console.error("register error", error)
     const message =

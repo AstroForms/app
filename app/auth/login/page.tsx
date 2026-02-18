@@ -1,7 +1,6 @@
 "use client"
 
 import React from "react"
-import { Suspense } from "react"
 
 import { signIn } from "next-auth/react"
 import { signIn as passkeySignIn } from "next-auth/webauthn"
@@ -10,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Rocket, Github, KeyRound } from "lucide-react"
 
@@ -41,24 +40,12 @@ function MicrosoftIcon({ className }: { className?: string }) {
   )
 }
 
-function LoginPageContent() {
+export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const urlError = searchParams.get("error")
-  const verified = searchParams.get("verified") === "1"
-
-  const friendlyUrlError =
-    urlError === "EmailNotVerified"
-      ? "Bitte bestaetige zuerst deine E-Mail."
-      : urlError === "InvalidVerificationLink"
-        ? "Der Bestaetigungslink ist ungueltig."
-        : urlError === "VerificationLinkExpired"
-          ? "Der Bestaetigungslink ist abgelaufen. Bitte neu registrieren."
-          : null
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -104,9 +91,6 @@ function LoginPageContent() {
             <span className="text-2xl font-bold text-foreground">AstroForms</span>
           </Link>
           <p className="text-muted-foreground">Melde dich bei deinem Account an</p>
-          {verified && (
-            <p className="text-sm text-emerald-500 mt-2">E-Mail erfolgreich bestaetigt. Du kannst dich jetzt anmelden.</p>
-          )}
         </div>
 
         <div className="glass rounded-2xl p-8">
@@ -186,9 +170,6 @@ function LoginPageContent() {
             {error && (
               <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{error}</p>
             )}
-            {!error && friendlyUrlError && (
-              <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{friendlyUrlError}</p>
-            )}
             <Button type="submit" className="w-full h-11 font-semibold text-primary-foreground" disabled={isLoading}>
               {isLoading ? "Anmelden..." : "Anmelden"}
             </Button>
@@ -210,13 +191,5 @@ function LoginPageContent() {
         </p>
       </div>
     </div>
-  )
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6" />}>
-      <LoginPageContent />
-    </Suspense>
   )
 }
