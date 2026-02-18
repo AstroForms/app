@@ -86,7 +86,7 @@ export async function listAuditLogs(limit = 100) {
 }
 
 async function sendAuditToDiscord(log: {
-  createdAt: string
+  createdAt: Date
   action: string
   actorId: string
   actorUsername: string | null
@@ -133,7 +133,7 @@ export async function createAuditLog(input: AuditLogInput) {
   await ensureAuditTables()
 
   const id = randomUUID()
-  const createdAt = new Date().toISOString()
+  const createdAt = new Date()
   const details = input.details?.trim() || null
 
   await prisma.$executeRaw`
