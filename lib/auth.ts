@@ -10,6 +10,9 @@ import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
 
 const isProd = process.env.NODE_ENV === "production"
+const sessionCookieName = isProd ? "__Secure-authjs.session-token" : "authjs.session-token"
+const csrfCookieName = isProd ? "__Host-authjs.csrf-token" : "authjs.csrf-token"
+const callbackCookieName = isProd ? "__Host-authjs.callback-url" : "authjs.callback-url"
 
 const providers = [
   GitHub({
@@ -90,10 +93,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   useSecureCookies: isProd,
   session: {
     strategy: "jwt",
+    maxAge: 60 * 60 * 8,
+    updateAge: 60 * 30,
+  },
+  jwt: {
+    maxAge: 60 * 60 * 8,
   },
   cookies: {
     sessionToken: {
-      name: isProd ? "__Secure-authjs.session-token" : "authjs.session-token",
+      name: sessionCookieName,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: isProd,
+      },
+    },
+    csrfToken: {
+      name: csrfCookieName,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: isProd,
+      },
+    },
+    callbackUrl: {
+      name: callbackCookieName,
       options: {
         httpOnly: true,
         sameSite: "lax",
