@@ -36,22 +36,35 @@ export default auth(async (req) => {
   if (sessionUserId && (await isUserCurrentlyBanned(sessionUserId))) {
     const loginUrl = new URL("/auth/login", nextUrl)
     loginUrl.searchParams.set("error", "AccountBanned")
-    return NextResponse.redirect(loginUrl)
+    const response = NextResponse.redirect(loginUrl)
+    response.cookies.delete("__Secure-authjs.callback-url")
+    response.cookies.delete("authjs.callback-url")
+    response.cookies.delete("authjs.session-token")
+    return response
   }
 
   // Redirect to login if accessing protected route without auth
   if (isProtectedRoute && !isLoggedIn) {
     const loginUrl = new URL("/auth/login", nextUrl)
     loginUrl.searchParams.set("callbackUrl", nextUrl.pathname)
-    return NextResponse.redirect(loginUrl)
+    const response = NextResponse.redirect(loginUrl)
+    response.cookies.delete("__Secure-authjs.callback-url")
+    response.cookies.delete("authjs.callback-url")
+    return response
   }
 
   // Redirect to home if accessing auth route while logged in
   if (isAuthRoute && isLoggedIn) {
-    return NextResponse.redirect(new URL("/", nextUrl))
+    const response = NextResponse.redirect(new URL("/", nextUrl))
+    response.cookies.delete("__Secure-authjs.callback-url")
+    response.cookies.delete("authjs.callback-url")
+    return response
   }
 
-  return NextResponse.next()
+  const response = NextResponse.next()
+  response.cookies.delete("__Secure-authjs.callback-url")
+  response.cookies.delete("authjs.callback-url")
+  return response
 })
 
 export const config = {

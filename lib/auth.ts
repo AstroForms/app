@@ -108,12 +108,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: process.env.AUTH_TRUST_HOST === "true",
   useSecureCookies: isProd,
   session: {
-    strategy: "jwt",
+    strategy: "database",
     maxAge: 60 * 60 * 8,
     updateAge: 60 * 30,
-  },
-  jwt: {
-    maxAge: 60 * 60 * 8,
   },
   cookies: {
     sessionToken: {
@@ -138,9 +135,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       name: callbackCookieName,
       options: {
         httpOnly: true,
-        sameSite: "lax",
-        path: "/",
+        sameSite: "strict",
+        path: "/api/auth",
         secure: isProd,
+        maxAge: 60,
       },
     },
   },
@@ -161,29 +159,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return token
     },
-    async session({ session, token }) {
-      if (!token?.id || typeof token.id !== "string") {
+    async session({ session, token, user }) {
+      const resolvedUserId =
+        typeof token?.id === "string"
+          ? token.id
+          : typeof user?.id === "string"
+            ? user.id
+            : null
+
+      if (!resolvedUserId || !session.user) {
+        return session
+      }
+
+      if (await isUserCurrentlyBanned(resolvedUserId)) {
         return { ...session, user: undefined as never }
       }
 
-      if (await isUserCurrentlyBanned(token.id)) {
-        return { ...session, user: undefined as never }
+      session.user.id = resolvedUserId
+
+      // Fetch profile data
+      const profile = await prisma.profile.findUnique({
+        where: { id: resolvedUserId },
+      })
+
+      if (profile) {
+        session.user.username = profile.username
+        session.user.role = profile.role
+        session.user.avatarUrl = profile.avatarUrl
       }
 
-      if (token && session.user) {
-        session.user.id = token.id as string
-        
-        // Fetch profile data
-        const profile = await prisma.profile.findUnique({
-          where: { id: token.id as string },
-        })
-
-        if (profile) {
-          session.user.username = profile.username
-          session.user.role = profile.role
-          session.user.avatarUrl = profile.avatarUrl
-        }
-      }
       return session
     },
     async signIn({ user }) {

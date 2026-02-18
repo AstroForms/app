@@ -79,6 +79,9 @@ export async function POST(req: NextRequest) {
       INSERT INTO "bans" ("id", "user_id", "banned_by", "reason", "is_global", "banned_until")
       VALUES (${randomUUID()}, ${profileId}, ${meId}, ${reason || null}, ${1}, ${bannedUntil})
     `
+    await prisma.session.deleteMany({
+      where: { userId: profileId },
+    })
 
     await createAuditLog({
       actorId: meId,
