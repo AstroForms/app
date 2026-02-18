@@ -29,19 +29,12 @@ function normalizeAuthSecret(value?: string) {
   return unquoted.replace(/\\/g, "")
 }
 
-const authSecretFromAuth = normalizeAuthSecret(process.env.AUTH_SECRET)
-const authSecretFromNextAuth = normalizeAuthSecret(process.env.NEXTAUTH_SECRET)
-if (
-  isProd &&
-  authSecretFromAuth &&
-  authSecretFromNextAuth &&
-  authSecretFromAuth !== authSecretFromNextAuth
-) {
-  throw new Error("AUTH_SECRET and NEXTAUTH_SECRET differ in production")
-}
-const authSecret = authSecretFromAuth || authSecretFromNextAuth
+const authSecret =
+  normalizeAuthSecret(process.env.AUTH_SECRET) ||
+  normalizeAuthSecret(process.env.NEXTAUTH_SECRET) ||
+  (isProd ? "" : "dev-only-auth-secret-change-me")
 if (isProd && !authSecret) {
-  throw new Error("Missing AUTH_SECRET/NEXTAUTH_SECRET in production")
+  throw new Error("Missing AUTH_SECRET in production")
 }
 
 async function isBannedSafe(userId: string) {
@@ -63,21 +56,24 @@ async function resolveUserIdFromAuthCandidate(user: { id?: string | null; email?
   return existing?.id ?? null
 }
 
+const AUTH_FAILURE_DELAY_MS = 350
+async function slowAuthFailure() {
+  await new Promise((resolve) => setTimeout(resolve, AUTH_FAILURE_DELAY_MS))
+  return null
+}
+
 const providers: any[] = [
   GitHub({
     clientId: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    allowDangerousEmailAccountLinking: true,
   }),
   Google({
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    allowDangerousEmailAccountLinking: true,
   }),
   Discord({
     clientId: process.env.DISCORD_CLIENT_ID,
     clientSecret: process.env.DISCORD_CLIENT_SECRET,
-    allowDangerousEmailAccountLinking: true,
   }),
 ]
 
@@ -86,7 +82,6 @@ if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
     MicrosoftEntraID({
       clientId: process.env.MICROSOFT_CLIENT_ID,
       clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
     }),
   )
 }
@@ -101,13 +96,13 @@ providers.push(
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null
+          return slowAuthFailure()
         }
 
         const identifier = String(credentials.email).trim()
         const plainPassword = String(credentials.password)
         if (!identifier || !plainPassword) {
-          return null
+          return slowAuthFailure()
         }
 
         let user = await prisma.user.findUnique({
@@ -137,15 +132,15 @@ providers.push(
         }
 
         if (!user) {
-          return null
+          return slowAuthFailure()
         }
 
         if (!user.password) {
-          return null
+          return slowAuthFailure()
         }
 
         if (await isBannedSafe(user.id)) {
-          return null
+          return slowAuthFailure()
         }
 
         const isValid = await bcrypt.compare(
@@ -153,7 +148,7 @@ providers.push(
           user.password,
         )
         if (!isValid) {
-          return null
+          return slowAuthFailure()
         }
 
         return {
@@ -173,7 +168,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: process.env.AUTH_TRUST_HOST === "true",
   useSecureCookies: isProd,
   session: {
-    strategy: "database",
+    strategy: "jwt",
     maxAge: 60 * 60 * 8,
     updateAge: 60 * 30,
   },
@@ -211,6 +206,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     enableWebAuthn: true,
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      try {
+        const target = new URL(url)
+        const base = new URL(baseUrl)
+        if (target.origin === base.origin) return url
+      } catch {
+        return baseUrl
+      }
+      return baseUrl
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
@@ -242,15 +248,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       session.user.id = resolvedUserId
 
-      // Fetch profile data
-      const profile = await prisma.profile.findUnique({
-        where: { id: resolvedUserId },
-      })
+      try {
+        // Profile enrichment is optional; login/session must not fail if DB lookup hiccups.
+        const profile = await prisma.profile.findUnique({
+          where: { id: resolvedUserId },
+        })
 
-      if (profile) {
-        session.user.username = profile.username
-        session.user.role = profile.role
-        session.user.avatarUrl = profile.avatarUrl
+        if (profile) {
+          session.user.username = profile.username
+          session.user.role = profile.role
+          session.user.avatarUrl = profile.avatarUrl
+        }
+      } catch {
+        return session
       }
 
       return session
