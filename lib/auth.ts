@@ -140,6 +140,7 @@ providers.push(
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   trustHost: process.env.AUTH_TRUST_HOST === "true",
   useSecureCookies: isProd,
   session: {

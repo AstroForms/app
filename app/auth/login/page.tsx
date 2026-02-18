@@ -57,11 +57,15 @@ export default function LoginPage() {
         email,
         password,
         redirect: false,
+        callbackUrl: "/",
       })
-      if (result?.error) {
-        throw new Error(result.error)
+      if (!result) {
+        throw new Error("Login fehlgeschlagen")
       }
-      router.push("/")
+      if (result.error || !result.ok) {
+        throw new Error(result.error || "Ungueltige Anmeldedaten")
+      }
+      router.push(result.url || "/")
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten")
     } finally {
