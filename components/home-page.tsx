@@ -207,6 +207,16 @@ export function HomePage({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            {!user && (
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <Button variant="outline" asChild className="w-full">
+                  <Link href="/auth/login" onClick={() => setSidebarOpen(false)}>Anmelden</Link>
+                </Button>
+                <Button asChild className="w-full text-primary-foreground">
+                  <Link href="/auth/sign-up" onClick={() => setSidebarOpen(false)}>Registrieren</Link>
+                </Button>
+              </div>
+            )}
             <div className="rounded-xl border border-border/50 bg-card/40 p-4 mt-4">
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Trending Channels

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
+import { Prisma } from "@prisma/client"
 
 // ==========================================
 // PROFILE ACTIONS
@@ -116,21 +117,6 @@ export async function joinChannel(channelId: string) {
     where: { userId: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
-
-  await prisma.channelMember.create({
-    data: {
-      channelId,
-      userId: profile.id,
-    },
-  })
-
-  await prisma.channel.update({
-    where: { id: channelId },
-    data: { memberCount: { increment: 1 } },
-  })
-
-  revalidatePath(`/channels/${channelId}`)
-}
 
 export async function leaveChannel(channelId: string) {
   const session = await auth()
