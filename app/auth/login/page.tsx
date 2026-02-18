@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { Suspense } from "react"
 
 import { signIn } from "next-auth/react"
 import { signIn as passkeySignIn } from "next-auth/webauthn"
@@ -40,7 +41,7 @@ function MicrosoftIcon({ className }: { className?: string }) {
   )
 }
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -209,5 +210,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6" />}>
+      <LoginPageContent />
+    </Suspense>
   )
 }
