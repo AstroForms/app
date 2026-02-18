@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { createAuditLog } from "@/lib/audit"
+import { ensureBansTable } from "@/lib/bans"
 
 async function requireAdmin() {
   const session = await auth()
@@ -33,6 +34,8 @@ export async function POST(req: NextRequest) {
     if (!profileId) {
       return NextResponse.json({ success: false, error: "No user id" }, { status: 400 })
     }
+
+    await ensureBansTable()
 
     await prisma.$executeRaw`
       DELETE FROM "bans"

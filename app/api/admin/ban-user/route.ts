@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { createAuditLog } from "@/lib/audit"
+import { ensureBansTable } from "@/lib/bans"
 
 const DURATION_TO_HOURS: Record<string, number> = {
   "1h": 1,
@@ -68,9 +69,15 @@ export async function POST(req: NextRequest) {
         ? null
         : new Date(Date.now() + (DURATION_TO_HOURS[duration] || 24) * 60 * 60 * 1000).toISOString()
 
+    await ensureBansTable()
+    await prisma.$executeRaw`
+      DELETE FROM "bans"
+      WHERE "user_id" = ${profileId}
+    `
+
     await prisma.$executeRaw`
       INSERT INTO "bans" ("id", "user_id", "banned_by", "reason", "is_global", "banned_until")
-      VALUES (${randomUUID()}, ${profileId}, ${meId}, ${reason || null}, ${true}, ${bannedUntil})
+      VALUES (${randomUUID()}, ${profileId}, ${meId}, ${reason || null}, ${1}, ${bannedUntil})
     `
 
     await createAuditLog({
