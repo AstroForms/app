@@ -15,6 +15,23 @@ const sessionCookieName = isProd ? "__Secure-authjs.session-token" : "authjs.ses
 const csrfCookieName = isProd ? "__Host-authjs.csrf-token" : "authjs.csrf-token"
 const callbackCookieName = isProd ? "__Secure-authjs.callback-url" : "authjs.callback-url"
 
+function normalizeAuthSecret(value?: string) {
+  if (!value) return ""
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1)
+  }
+  return trimmed
+}
+
+const authSecret = normalizeAuthSecret(process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET)
+if (isProd && !authSecret) {
+  throw new Error("Missing AUTH_SECRET/NEXTAUTH_SECRET in production")
+}
+
 async function isBannedSafe(userId: string) {
   try {
     return await isUserCurrentlyBanned(userId)
@@ -140,7 +157,7 @@ providers.push(
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers,
-  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+  secret: authSecret || undefined,
   trustHost: process.env.AUTH_TRUST_HOST === "true",
   useSecureCookies: isProd,
   session: {
