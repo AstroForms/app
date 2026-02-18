@@ -26,7 +26,7 @@ async function requireAdmin() {
 async function ensureIsVerifiedColumn() {
   try {
     await prisma.$executeRawUnsafe(
-      'ALTER TABLE "profiles" ADD COLUMN "is_verified" BOOLEAN NOT NULL DEFAULT false',
+      "ALTER TABLE `profiles` ADD COLUMN `is_verified` TINYINT(1) NOT NULL DEFAULT 0",
     )
   } catch (error) {
     const message = error instanceof Error ? error.message.toLowerCase() : ""
@@ -52,9 +52,9 @@ export async function POST(req: NextRequest) {
     await ensureIsVerifiedColumn()
 
     const updatedCount = await prisma.$executeRaw`
-      UPDATE "profiles"
-      SET "is_verified" = true
-      WHERE "id" = ${profileId}
+      UPDATE \`profiles\`
+      SET \`is_verified\` = 1
+      WHERE \`id\` = ${profileId}
     `
 
     if (!updatedCount) {

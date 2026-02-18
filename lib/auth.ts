@@ -15,6 +15,14 @@ const sessionCookieName = isProd ? "__Secure-authjs.session-token" : "authjs.ses
 const csrfCookieName = isProd ? "__Host-authjs.csrf-token" : "authjs.csrf-token"
 const callbackCookieName = isProd ? "__Host-authjs.callback-url" : "authjs.callback-url"
 
+async function isBannedSafe(userId: string) {
+  try {
+    return await isUserCurrentlyBanned(userId)
+  } catch {
+    return false
+  }
+}
+
 async function resolveUserIdFromAuthCandidate(user: { id?: string | null; email?: string | null }) {
   if (user.id) return user.id
   if (!user.email) return null
@@ -59,7 +67,7 @@ providers.push(
   Credentials({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email or username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
@@ -67,10 +75,37 @@ providers.push(
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+        const identifier = String(credentials.email).trim()
+        const plainPassword = String(credentials.password)
+        if (!identifier || !plainPassword) {
+          return null
+        }
+
+        let user = await prisma.user.findUnique({
+          where: { email: identifier },
           include: { profile: true },
         })
+
+        // Fallback: allow login by profile username.
+        if (!user) {
+          const profile = await prisma.profile.findUnique({
+            where: { username: identifier },
+            select: {
+              user: {
+                include: { profile: true },
+              },
+            },
+          })
+          user = profile?.user ?? null
+        }
+
+        // Backward compatibility: older registrations stored the entered username in users.name.
+        if (!user) {
+          user = await prisma.user.findFirst({
+            where: { name: identifier },
+            include: { profile: true },
+          })
+        }
 
         if (!user) {
           return null
@@ -80,12 +115,12 @@ providers.push(
           return null
         }
 
-        if (await isUserCurrentlyBanned(user.id)) {
+        if (await isBannedSafe(user.id)) {
           return null
         }
 
         const isValid = await bcrypt.compare(
-          credentials.password as string,
+          plainPassword,
           user.password,
         )
         if (!isValid) {
@@ -152,7 +187,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       const userId = typeof token.id === "string" ? token.id : typeof token.sub === "string" ? token.sub : null
-      if (userId && (await isUserCurrentlyBanned(userId))) {
+      if (userId && (await isBannedSafe(userId))) {
         token.id = undefined
         token.sub = undefined
       }
@@ -171,7 +206,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return session
       }
 
-      if (await isUserCurrentlyBanned(resolvedUserId)) {
+      if (await isBannedSafe(resolvedUserId)) {
         return { ...session, user: undefined as never }
       }
 
@@ -193,7 +228,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async signIn({ user }) {
       const userId = await resolveUserIdFromAuthCandidate({ id: user.id, email: user.email })
       if (!userId) return false
-      if (await isUserCurrentlyBanned(userId)) return false
+      if (await isBannedSafe(userId)) return false
       return true
     },
   },

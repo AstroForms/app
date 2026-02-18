@@ -28,10 +28,22 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    const requestedUsername =
+      typeof name === "string"
+        ? name.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 24)
+        : ""
+    const baseUsername = requestedUsername || (email.split("@")[0] || `user_${Date.now()}`)
+    let candidate = baseUsername
+    let suffix = 0
+    while (await prisma.profile.findUnique({ where: { username: candidate } })) {
+      suffix += 1
+      candidate = `${baseUsername}${suffix}`
+    }
+
     await prisma.profile.create({
       data: {
         id: user.id,
-        username: email.split("@")[0] || `user_${Date.now()}`,
+        username: candidate,
         displayName: name || email.split("@")[0],
       },
     })

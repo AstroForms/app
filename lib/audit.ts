@@ -21,21 +21,21 @@ type AuditLogInput = {
 
 async function ensureAuditTables() {
   await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "admin_audit_logs" (
-      "id" TEXT PRIMARY KEY,
-      "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "actor_id" TEXT NOT NULL,
-      "action" TEXT NOT NULL,
-      "target_user_id" TEXT,
-      "details" TEXT
+    CREATE TABLE IF NOT EXISTS \`admin_audit_logs\` (
+      \`id\` VARCHAR(191) PRIMARY KEY,
+      \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`actor_id\` VARCHAR(191) NOT NULL,
+      \`action\` VARCHAR(191) NOT NULL,
+      \`target_user_id\` VARCHAR(191) NULL,
+      \`details\` TEXT NULL
     )
   `)
 
   await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "admin_settings" (
-      "key" TEXT PRIMARY KEY,
-      "value" TEXT,
-      "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    CREATE TABLE IF NOT EXISTS \`admin_settings\` (
+      \`key\` VARCHAR(191) PRIMARY KEY,
+      \`value\` TEXT NULL,
+      \`updated_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `)
 }
@@ -43,9 +43,9 @@ async function ensureAuditTables() {
 export async function getAuditWebhook() {
   await ensureAuditTables()
   const rows = await prisma.$queryRaw<{ value: string | null }[]>`
-    SELECT "value"
-    FROM "admin_settings"
-    WHERE "key" = 'discord_webhook_url'
+    SELECT \`value\`
+    FROM \`admin_settings\`
+    WHERE \`key\` = 'discord_webhook_url'
     LIMIT 1
   `
   return rows[0]?.value?.trim() || ""
@@ -55,10 +55,9 @@ export async function setAuditWebhook(url: string) {
   await ensureAuditTables()
   const value = url.trim()
   await prisma.$executeRaw`
-    INSERT INTO "admin_settings" ("key", "value")
+    INSERT INTO \`admin_settings\` (\`key\`, \`value\`)
     VALUES ('discord_webhook_url', ${value})
-    ON CONFLICT("key")
-    DO UPDATE SET "value" = excluded."value", "updated_at" = CURRENT_TIMESTAMP
+    ON DUPLICATE KEY UPDATE \`value\` = VALUES(\`value\`), \`updated_at\` = CURRENT_TIMESTAMP
   `
 }
 
@@ -68,18 +67,18 @@ export async function listAuditLogs(limit = 100) {
 
   const rows = await prisma.$queryRaw<AuditLogItem[]>`
     SELECT
-      l."id",
-      l."created_at",
-      l."actor_id",
-      l."action",
-      l."target_user_id",
-      l."details",
-      a."username" AS "actor_username",
-      t."username" AS "target_username"
-    FROM "admin_audit_logs" l
-    LEFT JOIN "profiles" a ON a."id" = l."actor_id"
-    LEFT JOIN "profiles" t ON t."id" = l."target_user_id"
-    ORDER BY l."created_at" DESC
+      l.\`id\`,
+      l.\`created_at\`,
+      l.\`actor_id\`,
+      l.\`action\`,
+      l.\`target_user_id\`,
+      l.\`details\`,
+      a.\`username\` AS actor_username,
+      t.\`username\` AS target_username
+    FROM \`admin_audit_logs\` l
+    LEFT JOIN \`profiles\` a ON a.\`id\` = l.\`actor_id\`
+    LEFT JOIN \`profiles\` t ON t.\`id\` = l.\`target_user_id\`
+    ORDER BY l.\`created_at\` DESC
     LIMIT ${cappedLimit}
   `
 
@@ -138,13 +137,13 @@ export async function createAuditLog(input: AuditLogInput) {
   const details = input.details?.trim() || null
 
   await prisma.$executeRaw`
-    INSERT INTO "admin_audit_logs" (
-      "id",
-      "created_at",
-      "actor_id",
-      "action",
-      "target_user_id",
-      "details"
+    INSERT INTO \`admin_audit_logs\` (
+      \`id\`,
+      \`created_at\`,
+      \`actor_id\`,
+      \`action\`,
+      \`target_user_id\`,
+      \`details\`
     )
     VALUES (
       ${id},
@@ -158,8 +157,8 @@ export async function createAuditLog(input: AuditLogInput) {
 
   const usernames = await prisma.$queryRaw<{ actor_username: string | null; target_username: string | null }[]>`
     SELECT
-      (SELECT "username" FROM "profiles" WHERE "id" = ${input.actorId} LIMIT 1) AS "actor_username",
-      (SELECT "username" FROM "profiles" WHERE "id" = ${input.targetUserId || null} LIMIT 1) AS "target_username"
+      (SELECT \`username\` FROM \`profiles\` WHERE \`id\` = ${input.actorId} LIMIT 1) AS actor_username,
+      (SELECT \`username\` FROM \`profiles\` WHERE \`id\` = ${input.targetUserId || null} LIMIT 1) AS target_username
   `
 
   const resolved = usernames[0] || { actor_username: null, target_username: null }

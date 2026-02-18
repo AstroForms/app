@@ -1,4 +1,17 @@
 services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      - MYSQL_ROOT_PASSWORD=change_root_password
+      - MYSQL_DATABASE=astroforms
+      - MYSQL_USER=astroforms
+      - MYSQL_PASSWORD=change_app_password
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: unless-stopped
   certbot:
     image: certbot/certbot
     volumes:
@@ -12,7 +25,7 @@ services:
     build: .
     image: astroforms-web:latest
     environment:
-      - DATABASE_URL=file:./database.db
+      - DATABASE_URL=mysql://astroforms:change_app_password@mysql:3306/astroforms
       - PRISMA_CLIENT_ENGINE_TYPE=library
       - NODE_ENV=production
       - NEXTAUTH_URL=https://astroforms.de
@@ -40,10 +53,10 @@ services:
       - "8080:3000"
       - "51212:51212"
     volumes:
-      - ./database.db:/app/database.db
       - ./public/uploads:/app/public/uploads
     restart: unless-stopped
-    depends_on: []
+    depends_on:
+      - mysql
   nginx:
     image: nginx:alpine
     ports:
@@ -60,3 +73,6 @@ services:
 # - Lege deine SSL-Zertifikate (fullchain.pem, privkey.pem) in ./certs ab.
 # - Passe nginx.conf für die Domain astro.aveen.systems an.
 # - Beispiel-nginx.conf und Zertifikatserstellung siehe README.
+
+volumes:
+  mysql-data:

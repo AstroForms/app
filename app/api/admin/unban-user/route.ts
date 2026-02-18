@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
     await ensureBansTable()
 
     await prisma.$executeRaw`
-      DELETE FROM "bans"
-      WHERE "user_id" = ${profileId}
+      DELETE FROM \`bans\`
+      WHERE \`user_id\` = ${profileId}
     `
 
     await createAuditLog({

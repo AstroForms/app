@@ -67,16 +67,16 @@ export async function POST(req: NextRequest) {
     const bannedUntil =
       duration === "permanent"
         ? null
-        : new Date(Date.now() + (DURATION_TO_HOURS[duration] || 24) * 60 * 60 * 1000).toISOString()
+        : new Date(Date.now() + (DURATION_TO_HOURS[duration] || 24) * 60 * 60 * 1000)
 
     await ensureBansTable()
     await prisma.$executeRaw`
-      DELETE FROM "bans"
-      WHERE "user_id" = ${profileId}
+      DELETE FROM \`bans\`
+      WHERE \`user_id\` = ${profileId}
     `
 
     await prisma.$executeRaw`
-      INSERT INTO "bans" ("id", "user_id", "banned_by", "reason", "is_global", "banned_until")
+      INSERT INTO \`bans\` (\`id\`, \`user_id\`, \`banned_by\`, \`reason\`, \`is_global\`, \`banned_until\`)
       VALUES (${randomUUID()}, ${profileId}, ${meId}, ${reason || null}, ${1}, ${bannedUntil})
     `
     await prisma.session.deleteMany({
