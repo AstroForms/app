@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { createAuditLog } from "@/lib/audit"
 
 async function requireAdmin() {
   const session = await auth()
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     const target = await prisma.profile.findUnique({
       where: { id: profileId },
-      select: { role: true },
+      select: { role: true, username: true },
     })
 
     if (!target) {
@@ -57,6 +58,13 @@ export async function POST(req: NextRequest) {
     await prisma.profile.update({
       where: { id: profileId },
       data: { role: "admin" },
+    })
+
+    await createAuditLog({
+      actorId: meId,
+      action: "grant_admin",
+      targetUserId: profileId,
+      details: target.username ? `target=@${target.username}` : null,
     })
 
     return NextResponse.json({ success: true })

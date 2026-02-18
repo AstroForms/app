@@ -1,17 +1,7 @@
-import { randomUUID } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { createAuditLog } from "@/lib/audit"
-
-const DURATION_TO_HOURS: Record<string, number> = {
-  "1h": 1,
-  "6h": 6,
-  "1d": 24,
-  "3d": 72,
-  "7d": 168,
-  "30d": 720,
-}
 
 async function requireAdmin() {
   const session = await auth()
@@ -38,16 +28,14 @@ export async function POST(req: NextRequest) {
     const { meId, error } = await requireAdmin()
     if (error) return error
 
-    const body = await req.json()
-    const profileId = typeof body?.id === "string" ? body.id.trim() : ""
-    const reason = typeof body?.reason === "string" ? body.reason.trim() : ""
-    const duration = typeof body?.duration === "string" ? body.duration : "permanent"
-
+    const { id } = await req.json()
+    const profileId = typeof id === "string" ? id.trim() : ""
     if (!profileId) {
       return NextResponse.json({ success: false, error: "No user id" }, { status: 400 })
     }
+
     if (profileId === meId) {
-      return NextResponse.json({ success: false, error: "Du kannst deinen eigenen Account nicht bannen." }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Du kannst dir die Moderator-Rolle nicht selbst entfernen." }, { status: 400 })
     }
 
     const target = await prisma.profile.findUnique({
@@ -60,29 +48,28 @@ export async function POST(req: NextRequest) {
     }
 
     if (target.role === "owner") {
-      return NextResponse.json({ success: false, error: "Owner kann nicht gebannt werden." }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Owner-Rolle kann nicht geaendert werden." }, { status: 400 })
     }
 
-    const bannedUntil =
-      duration === "permanent"
-        ? null
-        : new Date(Date.now() + (DURATION_TO_HOURS[duration] || 24) * 60 * 60 * 1000).toISOString()
+    if (target.role !== "moderator") {
+      return NextResponse.json({ success: true, alreadyUser: true })
+    }
 
-    await prisma.$executeRaw`
-      INSERT INTO "bans" ("id", "user_id", "banned_by", "reason", "is_global", "banned_until")
-      VALUES (${randomUUID()}, ${profileId}, ${meId}, ${reason || null}, ${true}, ${bannedUntil})
-    `
+    await prisma.profile.update({
+      where: { id: profileId },
+      data: { role: "user" },
+    })
 
     await createAuditLog({
       actorId: meId,
-      action: "ban_user",
+      action: "remove_moderator",
       targetUserId: profileId,
-      details: `duration=${duration}${target.username ? `; target=@${target.username}` : ""}${reason ? `; reason=${reason}` : ""}`,
+      details: target.username ? `target=@${target.username}` : null,
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Ban user failed"
+    const message = error instanceof Error ? error.message : "Remove moderator failed"
     return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
 }

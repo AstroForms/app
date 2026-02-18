@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { createAuditLog } from "@/lib/audit"
 
 async function requireAdmin() {
   const session = await auth()
   const userId = session?.user?.id
   if (!userId) {
-    return { error: NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 }) }
+    return { meId: null, error: NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 }) }
   }
 
   const me = await prisma.profile.findUnique({
@@ -16,10 +17,10 @@ async function requireAdmin() {
 
   const hasAdminAccess = me?.role === "admin" || me?.role === "owner"
   if (!hasAdminAccess) {
-    return { error: NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 }) }
+    return { meId: null, error: NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 }) }
   }
 
-  return { error: null }
+  return { meId: userId, error: null }
 }
 
 async function ensureIsVerifiedColumn() {
@@ -39,7 +40,7 @@ async function ensureIsVerifiedColumn() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { error } = await requireAdmin()
+    const { meId, error } = await requireAdmin()
     if (error) return error
 
     const { id } = await req.json()
@@ -59,6 +60,12 @@ export async function POST(req: NextRequest) {
     if (!updatedCount) {
       return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
     }
+
+    await createAuditLog({
+      actorId: meId!,
+      action: "verify_user",
+      targetUserId: profileId,
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

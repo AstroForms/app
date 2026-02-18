@@ -9,6 +9,8 @@ import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
 
+const isProd = process.env.NODE_ENV === "production"
+
 const providers = [
   GitHub({
     clientId: process.env.GITHUB_CLIENT_ID,
@@ -85,21 +87,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers,
   trustHost: process.env.AUTH_TRUST_HOST === "true",
+  useSecureCookies: isProd,
   session: {
     strategy: "jwt",
+  },
+  cookies: {
+    sessionToken: {
+      name: isProd ? "__Secure-authjs.session-token" : "authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: isProd,
+      },
+    },
   },
   experimental: {
     enableWebAuthn: true,
   },
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-      }
-
-      // Handle session update
-      if (trigger === "update" && session) {
-        token = { ...token, ...session }
       }
 
       return token

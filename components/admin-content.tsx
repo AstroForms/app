@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import {
   Shield, BadgeCheck, Flag, Ban, Hash, Bot,
-  CheckCircle, XCircle, Trash2, AlertTriangle, Lock, User, Clock, Eye
+  CheckCircle, XCircle, Trash2, AlertTriangle, Lock, User, Clock, Eye, ScrollText
 } from "lucide-react"
 import { useEffect, useState } from "react"
 // ...existing code...
@@ -478,6 +478,13 @@ export function AdminContent({
         <div>
           <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
           <p className="text-muted-foreground text-sm">Verwalte Reports, Verifizierungen und Bans</p>
+        </div>
+        <div className="ml-auto">
+          <Button variant="outline" asChild className="bg-transparent">
+            <Link href="/admin/audit-logs">
+              <ScrollText className="h-4 w-4 mr-2" /> Audit-Logs
+            </Link>
+          </Button>
         </div>
       </div>
 

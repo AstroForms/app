@@ -46,12 +46,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<{ username: string; avatar_url: string | null } | null>(null)
   const [searchVal, setSearchVal] = useState("")
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!data?.user?.id) return
-        return fetch("/api/profile/me")
-      })
+    fetch("/api/profile/me", { cache: "no-store" })
       .then((res) => (res?.ok ? res.json() : null))
       .then((data) => {
         if (!data) return
