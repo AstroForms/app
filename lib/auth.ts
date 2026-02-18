@@ -13,7 +13,7 @@ import { isUserCurrentlyBanned } from "@/lib/bans"
 const isProd = process.env.NODE_ENV === "production"
 const sessionCookieName = isProd ? "__Secure-authjs.session-token" : "authjs.session-token"
 const csrfCookieName = isProd ? "__Host-authjs.csrf-token" : "authjs.csrf-token"
-const callbackCookieName = isProd ? "__Host-authjs.callback-url" : "authjs.callback-url"
+const callbackCookieName = isProd ? "__Secure-authjs.callback-url" : "authjs.callback-url"
 
 async function isBannedSafe(userId: string) {
   try {
@@ -170,8 +170,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       name: callbackCookieName,
       options: {
         httpOnly: true,
-        sameSite: "strict",
-        path: "/api/auth",
+        sameSite: "lax",
+        path: "/",
         secure: isProd,
         maxAge: 60,
       },
