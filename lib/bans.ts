@@ -18,3 +18,19 @@ export async function ensureBansTable() {
     ON "bans" ("user_id")
   `)
 }
+
+export async function isUserCurrentlyBanned(userId: string) {
+  if (!userId) return false
+
+  await ensureBansTable()
+
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT "id"
+    FROM "bans"
+    WHERE "user_id" = ${userId}
+      AND ("banned_until" IS NULL OR julianday("banned_until") > julianday('now'))
+    LIMIT 1
+  `
+
+  return rows.length > 0
+}

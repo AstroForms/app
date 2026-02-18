@@ -117,6 +117,36 @@ export async function joinChannel(channelId: string) {
     where: { userId: session.user.id },
   })
   if (!profile) throw new Error("Profile not found")
+  
+  const existing = await prisma.channelMember.findUnique({
+    where: {
+      channelId_userId: {
+        channelId,
+        userId: profile.id,
+      },
+    },
+  })
+
+  if (existing) {
+    return { alreadyJoined: true }
+  }
+
+  await prisma.channelMember.create({
+    data: {
+      channelId,
+      userId: profile.id,
+      role: "MEMBER",
+    },
+  })
+
+  await prisma.channel.update({
+    where: { id: channelId },
+    data: { memberCount: { increment: 1 } },
+  })
+
+  revalidatePath(`/channels/${channelId}`)
+  return { joined: true }
+}
 
 export async function leaveChannel(channelId: string) {
   const session = await auth()

@@ -8,11 +8,23 @@ import Passkey from "next-auth/providers/passkey"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
+import { isUserCurrentlyBanned } from "@/lib/bans"
 
 const isProd = process.env.NODE_ENV === "production"
 const sessionCookieName = isProd ? "__Secure-authjs.session-token" : "authjs.session-token"
 const csrfCookieName = isProd ? "__Host-authjs.csrf-token" : "authjs.csrf-token"
 const callbackCookieName = isProd ? "__Host-authjs.callback-url" : "authjs.callback-url"
+
+async function resolveUserIdFromAuthCandidate(user: { id?: string | null; email?: string | null }) {
+  if (user.id) return user.id
+  if (!user.email) return null
+
+  const existing = await prisma.user.findUnique({
+    where: { email: user.email },
+    select: { id: true },
+  })
+  return existing?.id ?? null
+}
 
 const providers = [
   GitHub({
@@ -65,6 +77,10 @@ providers.push(
         }
 
         if (!user.password) {
+          return null
+        }
+
+        if (await isUserCurrentlyBanned(user.id)) {
           return null
         }
 
@@ -137,9 +153,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id
       }
 
+      const userId = typeof token.id === "string" ? token.id : typeof token.sub === "string" ? token.sub : null
+      if (userId && (await isUserCurrentlyBanned(userId))) {
+        token.id = undefined
+        token.sub = undefined
+      }
+
       return token
     },
     async session({ session, token }) {
+      if (!token?.id || typeof token.id !== "string") {
+        return { ...session, user: undefined as never }
+      }
+
+      if (await isUserCurrentlyBanned(token.id)) {
+        return { ...session, user: undefined as never }
+      }
+
       if (token && session.user) {
         session.user.id = token.id as string
         
@@ -156,7 +186,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return session
     },
-    async signIn() {
+    async signIn({ user }) {
+      const userId = await resolveUserIdFromAuthCandidate({ id: user.id, email: user.email })
+      if (!userId) return false
+      if (await isUserCurrentlyBanned(userId)) return false
       return true
     },
   },
