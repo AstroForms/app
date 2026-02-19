@@ -647,6 +647,10 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const [showPromoteDialog, setShowPromoteDialog] = useState(false)
   const [isPromotingChannel, setIsPromotingChannel] = useState(false)
   const [profileXp, setProfileXp] = useState<number | null>(null)
+  const [isCopyingChannelLink, setIsCopyingChannelLink] = useState(false)
+  const [showDeleteChannelDialog, setShowDeleteChannelDialog] = useState(false)
+  const [deleteChannelConfirmation, setDeleteChannelConfirmation] = useState("")
+  const [isDeletingChannel, setIsDeletingChannel] = useState(false)
 
   // Post media states
   const [postImageUrl, setPostImageUrl] = useState("")
