@@ -608,6 +608,7 @@ function PostItem({
 }
 
 export function ChannelDetail({ channel, posts, members, membership, userId }: ChannelDetailProps) {
+  const MAX_POST_LENGTH = 2000
   const router = useRouter()
   const [newPost, setNewPost] = useState("")
   useEffect(() => {
@@ -648,6 +649,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
 
   const isOwner = channel.owner_id === userId
   const isMod = membership?.role === "moderator" || membership?.role === "owner" || membership?.role === "admin"
+  const remainingPostChars = MAX_POST_LENGTH - newPost.length
   const displayMembers = members.some((member) => member.user_id === channel.owner_id)
     ? members
     : [
@@ -774,6 +776,10 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
 
   const handlePost = async () => {
     if (!newPost.trim() && !postImageUrl) return
+    if (newPost.length > MAX_POST_LENGTH) {
+      toast.error(`Post ist zu lang. Maximal ${MAX_POST_LENGTH} Zeichen.`)
+      return
+    }
     setIsPosting(true)
     const supabase = createDbClient()
     
@@ -1068,7 +1074,13 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
                 onChange={setNewPost}
                 className="bg-secondary/30 border-border/50 mb-3"
                 minHeight="80px"
+                maxLength={MAX_POST_LENGTH}
               />
+              <div className="mb-3 flex justify-end">
+                <p className={`text-xs ${remainingPostChars <= 100 ? "text-amber-400" : "text-muted-foreground"}`}>
+                  {remainingPostChars} Zeichen uebrig
+                </p>
+              </div>
               
               {/* Media Preview */}
               {postImageUrl && (
@@ -1234,7 +1246,11 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
                     </DialogContent>
                   </Dialog>
                 </div>
-                <Button onClick={handlePost} disabled={isPosting || (!newPost.trim() && !postImageUrl)} className="text-primary-foreground">
+                <Button
+                  onClick={handlePost}
+                  disabled={isPosting || (!newPost.trim() && !postImageUrl) || remainingPostChars < 0}
+                  className="text-primary-foreground"
+                >
                   <Send className="h-4 w-4 mr-2" /> Posten
                 </Button>
               </div>
@@ -1345,4 +1361,3 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
     </div>
   )
 }
-

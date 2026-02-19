@@ -1,6 +1,13 @@
 import Link from "next/link"
 import { Rocket, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Datenschutzerklaerung",
+  description: "Datenschutzerklaerung von AstroForms gemaess DSGVO.",
+  alternates: { canonical: "/legal/privacy" },
+}
 
 export default function PrivacyPage() {
   return (

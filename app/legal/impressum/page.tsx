@@ -1,6 +1,13 @@
 import Link from "next/link"
 import { Rocket, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Impressum",
+  description: "Impressum und Anbieterkennzeichnung von AstroForms.",
+  alternates: { canonical: "/legal/impressum" },
+}
 
 export default function ImpressumPage() {
   return (

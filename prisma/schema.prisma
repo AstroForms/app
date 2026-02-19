@@ -245,7 +245,7 @@ enum MemberRole {
 
 model Post {
   id              String   @id @default(cuid())
-  content         String
+  content         String   @db.Text
   userId          String   @map("user_id")
   channelId       String   @map("channel_id")
   isAutomated     Boolean  @default(false) @map("is_automated")
@@ -309,7 +309,7 @@ model PostComment {
   id        String   @id @default(cuid())
   postId    String   @map("post_id")
   userId    String   @map("user_id")
-  content   String
+  content   String   @db.Text
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

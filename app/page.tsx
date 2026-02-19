@@ -1,7 +1,15 @@
 
+import type { Metadata } from "next"
 import { HomePage } from "@/components/home-page"
 import { prisma } from "@/lib/db"
 import { auth } from "@/lib/auth"
+
+export const metadata: Metadata = {
+  title: "AstroForms Startseite",
+  description:
+    "Entdecke AstroForms: Community-Channels, Social-Posts, Bots und Automatisierungen auf einer Plattform.",
+  alternates: { canonical: "/" },
+}
 
 export default async function Page() {
   const session = await auth()

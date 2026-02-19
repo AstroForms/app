@@ -18,10 +18,11 @@ interface HashtagInputProps {
   placeholder?: string
   className?: string
   minHeight?: string
+  maxLength?: number
 }
 
 export const HashtagInput = forwardRef<HTMLTextAreaElement, HashtagInputProps>(
-  ({ value, onChange, placeholder = "Schreibe etwas...", className, minHeight = "80px" }, ref) => {
+  ({ value, onChange, placeholder = "Schreibe etwas...", className, minHeight = "80px", maxLength }, ref) => {
     const [showSuggestions, setShowSuggestions] = useState(false)
     const [suggestions, setSuggestions] = useState<Hashtag[]>([])
     const [selectedIndex, setSelectedIndex] = useState(0)
@@ -193,6 +194,7 @@ export const HashtagInput = forwardRef<HTMLTextAreaElement, HashtagInputProps>(
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          maxLength={maxLength}
           className={cn("resize-none", className)}
           style={{ minHeight }}
         />
@@ -264,4 +266,3 @@ export const HashtagInput = forwardRef<HTMLTextAreaElement, HashtagInputProps>(
 )
 
 HashtagInput.displayName = "HashtagInput"
-

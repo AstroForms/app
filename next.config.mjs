@@ -25,6 +25,7 @@ const nextConfig = {
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
           { key: "Pragma", value: "no-cache" },
           { key: "Expires", value: "0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
       {
@@ -33,6 +34,7 @@ const nextConfig = {
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
           { key: "Pragma", value: "no-cache" },
           { key: "Expires", value: "0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
       {
@@ -41,6 +43,7 @@ const nextConfig = {
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
           { key: "Pragma", value: "no-cache" },
           { key: "Expires", value: "0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
       {
@@ -49,6 +52,7 @@ const nextConfig = {
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
           { key: "Pragma", value: "no-cache" },
           { key: "Expires", value: "0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
       {
@@ -57,6 +61,7 @@ const nextConfig = {
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
           { key: "Pragma", value: "no-cache" },
           { key: "Expires", value: "0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
       {
@@ -65,6 +70,7 @@ const nextConfig = {
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
           { key: "Pragma", value: "no-cache" },
           { key: "Expires", value: "0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
       {
@@ -73,6 +79,25 @@ const nextConfig = {
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
           { key: "Pragma", value: "no-cache" },
           { key: "Expires", value: "0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
+        source: "/auth/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
+        source: "/discover",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
+        source: "/dashboard",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
     ]

@@ -1,6 +1,13 @@
 import Link from "next/link"
 import { Rocket, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "AGB",
+  description: "Allgemeine Geschaeftsbedingungen von AstroForms.",
+  alternates: { canonical: "/legal/tos" },
+}
 
 export default function TosPage() {
   return (
