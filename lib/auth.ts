@@ -272,7 +272,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           tokenWith2fa.twoFactorVerified = false
         }
 
-        if (typeof tokenWith2fa.acceptedTermsVersion === "undefined" || user) {
+        if (
+          user ||
+          typeof tokenWith2fa.acceptedTermsVersion === "undefined" ||
+          tokenWith2fa.acceptedTermsVersion !== CURRENT_TERMS_VERSION
+        ) {
           tokenWith2fa.acceptedTermsVersion = await getAcceptedTermsVersion(userId)
         }
       }
