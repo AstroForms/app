@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Datenschutzerklaerung",
-  description: "Datenschutzerklaerung von AstroForms gemaess DSGVO.",
+  title: "Datenschutzerklärung",
+  description: "Datenschutzerklärung von AstroForms.",
   alternates: { canonical: "/legal/privacy" },
 }
 
@@ -19,20 +19,20 @@ export default function PrivacyPage() {
             <span className="font-bold text-foreground">AstroForms</span>
           </Link>
           <Button variant="ghost" asChild className="text-muted-foreground">
-            <Link href="/"><ArrowLeft className="h-4 w-4 mr-2" /> Zurueck</Link>
+            <Link href="/"><ArrowLeft className="h-4 w-4 mr-2" /> Zurück</Link>
           </Button>
         </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-16">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Datenschutzerklaerung</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Datenschutzerklärung</h1>
         <p className="text-muted-foreground mb-10">Zuletzt aktualisiert: 9. Februar 2026</p>
 
         <div className="prose prose-invert max-w-none">
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">1. Verantwortlicher</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Verantwortlich fuer die Datenverarbeitung auf dieser Plattform ist der Betreiber von AstroForms. 
+              Verantwortlich für die Datenverarbeitung auf dieser Plattform ist der Betreiber von AstroForms. 
               Kontaktdaten finden Sie im Impressum.
             </p>
           </section>
@@ -48,21 +48,21 @@ export default function PrivacyPage() {
               <li>Erstellte Inhalte (Posts, Channels, Bots, Automatisierungen)</li>
               <li>Interaktionsdaten (Follows, Channel-Mitgliedschaften, XP-Verlauf)</li>
               <li>Technische Daten (IP-Adresse, Browser-Informationen, Zeitstempel)</li>
-              <li>OAuth-Daten bei Anmeldung ueber Google, Discord oder GitHub</li>
+              <li>OAuth-Daten bei Anmeldung über Google, Discord oder GitHub</li>
             </ul>
           </section>
 
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">3. Zweck der Datenverarbeitung</h2>
             <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-              Die erhobenen Daten werden fuer folgende Zwecke verarbeitet:
+              Die erhobenen Daten werden für folgende Zwecke verarbeitet:
             </p>
             <ul className="list-disc list-inside text-sm text-muted-foreground leading-relaxed flex flex-col gap-2">
               <li>Bereitstellung und Betrieb der Plattform</li>
               <li>Verwaltung von Nutzerkonten und Authentifizierung</li>
               <li>Anzeige von Profilen, Posts und Channel-Inhalten</li>
               <li>Berechnung und Anzeige des XP- und Levelsystems</li>
-              <li>Sicherheit und Missbrauchspraevention</li>
+              <li>Sicherheit und Missbrauchsprävention</li>
               <li>Verwaltung von Reports und Moderationsaufgaben</li>
             </ul>
           </section>
@@ -70,9 +70,9 @@ export default function PrivacyPage() {
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">4. Rechtsgrundlage</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Die Verarbeitung der Daten erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO (Vertragsdurchfuehrung) 
+              Die Verarbeitung der Daten erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO (Vertragsdurchführung) 
               sowie Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Sicherheit und dem Betrieb der Plattform). 
-              Die Anmeldung ueber OAuth-Anbieter erfolgt auf Grundlage der Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO.
+              Die Anmeldung über OAuth-Anbieter erfolgt auf Grundlage der Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO.
             </p>
           </section>
 
@@ -81,21 +81,21 @@ export default function PrivacyPage() {
             <p className="text-sm text-muted-foreground leading-relaxed">
               Die Daten werden auf Servern mit eigener Datenbank-Infrastruktur gespeichert.
               Die Daten werden so lange gespeichert, wie der Nutzeraccount besteht. 
-              Nach Loeschung des Accounts werden die Daten innerhalb von 30 Tagen vollstaendig entfernt.
+              Nach Löschen des Accounts werden die Daten innerhalb von 30 Tagen vollständig entfernt.
             </p>
           </section>
 
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">6. Rechte der Betroffenen</h2>
             <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-              Gemaess DSGVO haben Sie folgende Rechte:
+              Gemäß der DSGVO haben Sie folgende Rechte:
             </p>
             <ul className="list-disc list-inside text-sm text-muted-foreground leading-relaxed flex flex-col gap-2">
-              <li>Recht auf Auskunft ueber gespeicherte Daten (Art. 15 DSGVO)</li>
+              <li>Recht auf Auskunft über gespeicherte Daten (Art. 15 DSGVO)</li>
               <li>Recht auf Berichtigung unrichtiger Daten (Art. 16 DSGVO)</li>
-              <li>Recht auf Loeschung der Daten (Art. 17 DSGVO)</li>
-              <li>Recht auf Einschraenkung der Verarbeitung (Art. 18 DSGVO)</li>
-              <li>Recht auf Datenuebertragbarkeit (Art. 20 DSGVO)</li>
+              <li>Recht auf Löschen der Daten (Art. 17 DSGVO)</li>
+              <li>Recht auf Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
+              <li>Recht auf Datenübertragbarkeit (Art. 20 DSGVO)</li>
               <li>Recht auf Widerspruch gegen die Verarbeitung (Art. 21 DSGVO)</li>
             </ul>
           </section>
@@ -103,8 +103,8 @@ export default function PrivacyPage() {
           <section className="glass rounded-2xl p-8">
             <h2 className="text-xl font-semibold text-foreground mb-4">7. Cookies</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              AstroForms verwendet nur technisch notwendige Cookies fuer die Authentifizierung und Session-Verwaltung. 
-              Es werden keine Tracking-Cookies oder Cookies fuer Werbezwecke eingesetzt.
+              AstroForms verwendet nur technisch notwendige Cookies für die Authentifizierung und Session-Verwaltung. 
+              Es werden keine Tracking-Cookies oder Cookies für Werbezwecke eingesetzt.
             </p>
           </section>
         </div>
