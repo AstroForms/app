@@ -633,24 +633,6 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [showPromoteDialog, setShowPromoteDialog] = useState(false)
-  const [channelName, setChannelName] = useState(channel.name)
-  const [channelDescription, setChannelDescription] = useState(channel.description || "")
-  const [channelIsPublic, setChannelIsPublic] = useState(Boolean(channel.is_public ?? true))
-  const [settingsName, setSettingsName] = useState(channel.name)
-  const [settingsDescription, setSettingsDescription] = useState(channel.description || "")
-  const [settingsIsPublic, setSettingsIsPublic] = useState(Boolean(channel.is_public ?? true))
-  const [isSavingSettings, setIsSavingSettings] = useState(false)
-  const [showDeleteChannelDialog, setShowDeleteChannelDialog] = useState(false)
-  const [deleteChannelConfirmation, setDeleteChannelConfirmation] = useState("")
-  const [isDeletingChannel, setIsDeletingChannel] = useState(false)
-  const [profileXp, setProfileXp] = useState<number | null>(null)
-  const [isPromotingChannel, setIsPromotingChannel] = useState(false)
-  const [boostedUntil, setBoostedUntil] = useState<string | null>(channel.boosted_until || null)
-  const [hasPendingPromotionRequest, setHasPendingPromotionRequest] = useState(
-    !!channel.has_pending_promotion_request,
-  )
-  const [isCopyingChannelLink, setIsCopyingChannelLink] = useState(false)
   
   // Post media states
   const [postImageUrl, setPostImageUrl] = useState("")
@@ -703,6 +685,16 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
         },
         ...members,
       ]
+
+  useEffect(() => {
+    const isPublic = channel.is_public ?? true
+    setChannelName(channel.name)
+    setChannelDescription(channel.description || "")
+    setChannelIsPublic(isPublic)
+    setSettingsName(channel.name)
+    setSettingsDescription(channel.description || "")
+    setSettingsIsPublic(isPublic)
+  }, [channel.name, channel.description, channel.is_public])
 
   useEffect(() => {
     setBoostedUntil(channel.boosted_until || null)
