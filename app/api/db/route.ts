@@ -160,6 +160,14 @@ function normalizeWriteData(table: string, payload: Record<string, any>) {
     payload.mediaType = "gif"
     delete payload.gifUrl
   }
+  if (table === "posts") {
+    const optionalKeys = ["imageUrl", "linkUrl", "linkTitle", "linkDescription", "linkImage", "parentPostId", "botId"]
+    for (const key of optionalKeys) {
+      if (payload[key] === null || payload[key] === undefined || payload[key] === "") {
+        delete payload[key]
+      }
+    }
+  }
   return payload
 }
 
@@ -410,113 +418,118 @@ function mapRecord(table: string, record: any) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  const body = await req.json()
-  const { table, action, filters, order, limit, count, head, single, maybeSingle, data } = body
-  const model = getModel(table)
-  if (!model) {
-    return NextResponse.json({ error: "Unknown table" }, { status: 400 })
-  }
-
-  if (!session?.user?.id && action !== "select") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  const where = mapFilters(table, filters || [])
-  const include = getInclude(table)
-  const orderBy = mapOrder(table, order)
-
-  if (action === "select") {
-    if (count && head) {
-      const total = await (model as any).count({ where })
-      return NextResponse.json({ data: null, error: null, count: total })
+  try {
+    const session = await auth()
+    const body = await req.json()
+    const { table, action, filters, order, limit, count, head, single, maybeSingle, data } = body
+    const model = getModel(table)
+    if (!model) {
+      return NextResponse.json({ error: "Unknown table" }, { status: 400 })
     }
 
-    if (single || maybeSingle) {
-      const record = await (model as any).findFirst({ where, include, orderBy })
-      return NextResponse.json({ data: record ? mapRecord(table, record) : null, error: null })
+    if (!session?.user?.id && action !== "select") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const records = await (model as any).findMany({
-      where,
-      include,
-      orderBy,
-      take: limit,
-    })
-    return NextResponse.json({
-      data: records.map((record: any) => mapRecord(table, record)),
-      error: null,
-    })
-  }
+    const where = mapFilters(table, filters || [])
+    const include = getInclude(table)
+    const orderBy = mapOrder(table, order)
 
-  const mappedData: Record<string, any> = {}
-  if (data && typeof data === "object") {
-    for (const [key, value] of Object.entries(data)) {
-      mappedData[toCamel(key)] = normalizeEnumInput(table, key, value)
+    if (action === "select") {
+      if (count && head) {
+        const total = await (model as any).count({ where })
+        return NextResponse.json({ data: null, error: null, count: total })
+      }
+
+      if (single || maybeSingle) {
+        const record = await (model as any).findFirst({ where, include, orderBy })
+        return NextResponse.json({ data: record ? mapRecord(table, record) : null, error: null })
+      }
+
+      const records = await (model as any).findMany({
+        where,
+        include,
+        orderBy,
+        take: limit,
+      })
+      return NextResponse.json({
+        data: records.map((record: any) => mapRecord(table, record)),
+        error: null,
+      })
     }
-  }
-  normalizeWriteData(table, mappedData)
 
-  if (action === "insert") {
-    const created = await (model as any).create({ data: mappedData, include })
-    return NextResponse.json({ data: mapRecord(table, created), error: null })
-  }
+    const mappedData: Record<string, any> = {}
+    if (data && typeof data === "object") {
+      for (const [key, value] of Object.entries(data)) {
+        mappedData[toCamel(key)] = normalizeEnumInput(table, key, value)
+      }
+    }
+    normalizeWriteData(table, mappedData)
 
-  if (action === "upsert") {
-    const payload = data && typeof data === "object" && "values" in data ? (data as any).values : data
-    if (Array.isArray(payload)) {
-      const rows = payload
-        .filter((row) => row && typeof row === "object")
-        .map((row) =>
-          normalizeWriteData(
-            table,
-            Object.fromEntries(
-            Object.entries(row as Record<string, unknown>).map(([key, value]) => [
-              toCamel(key),
-              normalizeEnumInput(table, key, value),
-            ]),
+    if (action === "insert") {
+      const created = await (model as any).create({ data: mappedData, include })
+      return NextResponse.json({ data: mapRecord(table, created), error: null })
+    }
+
+    if (action === "upsert") {
+      const payload = data && typeof data === "object" && "values" in data ? (data as any).values : data
+      if (Array.isArray(payload)) {
+        const rows = payload
+          .filter((row) => row && typeof row === "object")
+          .map((row) =>
+            normalizeWriteData(
+              table,
+              Object.fromEntries(
+                Object.entries(row as Record<string, unknown>).map(([key, value]) => [
+                  toCamel(key),
+                  normalizeEnumInput(table, key, value),
+                ]),
+              ),
             ),
-          ),
-        )
+          )
 
-      if (rows.length === 0) {
+        if (rows.length === 0) {
+          return NextResponse.json({ data: null, error: null })
+        }
+
+        await (model as any).createMany({ data: rows, skipDuplicates: true })
         return NextResponse.json({ data: null, error: null })
       }
 
-      await (model as any).createMany({ data: rows, skipDuplicates: true })
+      if (!payload || typeof payload !== "object") {
+        return NextResponse.json({ error: "Invalid upsert payload" }, { status: 400 })
+      }
+
+      const row = normalizeWriteData(
+        table,
+        Object.fromEntries(
+          Object.entries(payload as Record<string, unknown>).map(([key, value]) => [
+            toCamel(key),
+            normalizeEnumInput(table, key, value),
+          ]),
+        ),
+      )
+      const created = await (model as any).create({ data: row, include })
+      return NextResponse.json({ data: mapRecord(table, created), error: null })
+    }
+
+    if (action === "update") {
+      await (model as any).updateMany({ where, data: mappedData })
+      const updated = await (model as any).findMany({ where, include })
+      return NextResponse.json({
+        data: updated.map((record: any) => mapRecord(table, record)),
+        error: null,
+      })
+    }
+
+    if (action === "delete") {
+      await (model as any).deleteMany({ where })
       return NextResponse.json({ data: null, error: null })
     }
 
-    if (!payload || typeof payload !== "object") {
-      return NextResponse.json({ error: "Invalid upsert payload" }, { status: 400 })
-    }
-
-    const row = normalizeWriteData(
-      table,
-      Object.fromEntries(
-        Object.entries(payload as Record<string, unknown>).map(([key, value]) => [
-          toCamel(key),
-          normalizeEnumInput(table, key, value),
-        ]),
-      ),
-    )
-    const created = await (model as any).create({ data: row, include })
-    return NextResponse.json({ data: mapRecord(table, created), error: null })
+    return NextResponse.json({ error: "Unsupported action" }, { status: 400 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Database request failed"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  if (action === "update") {
-    await (model as any).updateMany({ where, data: mappedData })
-    const updated = await (model as any).findMany({ where, include })
-    return NextResponse.json({
-      data: updated.map((record: any) => mapRecord(table, record)),
-      error: null,
-    })
-  }
-
-  if (action === "delete") {
-    await (model as any).deleteMany({ where })
-    return NextResponse.json({ data: null, error: null })
-  }
-
-  return NextResponse.json({ error: "Unsupported action" }, { status: 400 })
 }
