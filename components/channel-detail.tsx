@@ -381,7 +381,7 @@ function PostItem({
               </a>
             )}
             
-            <p className="text-xs text-muted-foreground mt-1.5">
+            <p className="text-xs text-muted-foreground mt-1.5" suppressHydrationWarning>
               {new Date(post.created_at).toLocaleDateString("de-DE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
             </p>
             
@@ -493,7 +493,7 @@ function PostItem({
                       <Link href={`/profile/${comment.profiles.id}`} className="text-xs font-medium text-foreground hover:underline">
                         {comment.profiles.display_name || comment.profiles.username}
                       </Link>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[10px] text-muted-foreground" suppressHydrationWarning>
                         {new Date(comment.created_at).toLocaleDateString("de-DE", { day: "numeric", month: "short" })}
                       </span>
                       {comment.user_id === userId && (
@@ -670,6 +670,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const [showChannelReportDialog, setShowChannelReportDialog] = useState(false)
   const [channelReportReason, setChannelReportReason] = useState("")
   const [channelReportDetails, setChannelReportDetails] = useState("")
+  const [clientNow, setClientNow] = useState<number | null>(null)
 
   const iconInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
@@ -678,7 +679,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const isOwner = channel.owner_id === userId
   const isMod = membership?.role === "moderator" || membership?.role === "owner" || membership?.role === "admin"
   const remainingPostChars = MAX_POST_LENGTH - newPost.length
-  const isBoostActive = boostedUntil ? new Date(boostedUntil).getTime() > Date.now() : false
+  const isBoostActive = boostedUntil && clientNow !== null ? new Date(boostedUntil).getTime() > clientNow : false
   const boostedUntilLabel = boostedUntil
     ? new Date(boostedUntil).toLocaleString("de-DE", {
         day: "2-digit",
@@ -721,6 +722,10 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   useEffect(() => {
     setHasPendingPromotionRequest(!!channel.has_pending_promotion_request)
   }, [channel.has_pending_promotion_request])
+
+  useEffect(() => {
+    setClientNow(Date.now())
+  }, [])
 
   useEffect(() => {
     if (!isOwner) return
@@ -1658,7 +1663,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
             {boostedUntilLabel && (
               <p className="text-xs text-muted-foreground">
                 {isBoostActive ? "Werbung aktiv bis: " : "Letzte Werbung lief bis: "}
-                <span className="text-foreground">{boostedUntilLabel}</span>
+                <span className="text-foreground" suppressHydrationWarning>{boostedUntilLabel}</span>
               </p>
             )}
             {hasPendingPromotionRequest && (
