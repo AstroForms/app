@@ -5,27 +5,40 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
 function createPrismaClient() {
   const rawUrl = process.env.DATABASE_URL
   const databaseUrl =
     rawUrl && typeof rawUrl === "string"
       ? rawUrl
       : "mysql://astroforms:change_me@127.0.0.1:3306/astroforms"
-  const connectionLimit = Number(process.env.DB_CONNECTION_LIMIT || "2")
-  const acquireTimeout = Number(process.env.DB_ACQUIRE_TIMEOUT_MS || "15000")
-  const connectTimeout = Number(process.env.DB_CONNECT_TIMEOUT_MS || "10000")
 
   const parsed = new URL(databaseUrl)
+  const configuredLimit = Number(process.env.DB_CONNECTION_LIMIT)
+  const connectionLimit =
+    Number.isFinite(configuredLimit) && configuredLimit > 0
+      ? configuredLimit
+      : process.env.NODE_ENV === "production"
+        ? 5
+        : 1
+
   const adapter = new PrismaMariaDb({
     host: parsed.hostname,
     port: parsed.port ? Number(parsed.port) : 3306,
-    user: decodeURIComponent(parsed.username),
-    password: decodeURIComponent(parsed.password),
+    user: safeDecode(parsed.username),
+    password: safeDecode(parsed.password),
     database: parsed.pathname.replace(/^\/+/, ""),
     allowPublicKeyRetrieval: true,
-    connectionLimit: Number.isFinite(connectionLimit) && connectionLimit > 0 ? connectionLimit : 2,
-    acquireTimeout: Number.isFinite(acquireTimeout) && acquireTimeout > 0 ? acquireTimeout : 15000,
-    connectTimeout: Number.isFinite(connectTimeout) && connectTimeout > 0 ? connectTimeout : 10000,
+    connectionLimit: 10,
+    acquireTimeout: 15000,
+    connectTimeout: 10000,
   })
   return new PrismaClient({ adapter })
 }

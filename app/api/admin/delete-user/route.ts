@@ -50,15 +50,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Owner-Account kann nicht gelöscht werden." }, { status: 400 })
     }
 
+    const deleted = await prisma.user.deleteMany({
+      where: { id: profileId },
+    })
+    if (deleted.count === 0) {
+      return NextResponse.json({ success: false, error: "User bereits geloescht oder nicht vorhanden." }, { status: 404 })
+    }
+
     await createAuditLog({
       actorId: meId,
       action: "delete_user",
       targetUserId: profileId,
       details: target.username ? `target=@${target.username}` : null,
-    })
-
-    await prisma.user.delete({
-      where: { id: profileId },
     })
 
     return NextResponse.json({ success: true })

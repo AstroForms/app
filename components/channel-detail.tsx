@@ -26,6 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -58,6 +59,7 @@ interface ChannelDetailProps {
     id: string
     name: string
     description: string | null
+    is_public?: boolean
     owner_id: string
     is_verified: boolean
     member_count: number
@@ -631,13 +633,6 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [showPromoteDialog, setShowPromoteDialog] = useState(false)
-  const [isPromotingChannel, setIsPromotingChannel] = useState(false)
-  const [hasPendingPromotionRequest, setHasPendingPromotionRequest] = useState(
-    !!channel.has_pending_promotion_request,
-  )
-  const [profileXp, setProfileXp] = useState<number | null>(null)
-  const [boostedUntil, setBoostedUntil] = useState<string | null>(channel.boosted_until || null)
   
   // Post media states
   const [postImageUrl, setPostImageUrl] = useState("")
@@ -808,6 +803,51 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
     setCropperOpen(false)
     URL.revokeObjectURL(cropperImageSrc)
     setCropperImageSrc("")
+  }
+
+  const handleSaveChannelSettings = async () => {
+    if (!isOwner) return
+
+    const nextName = settingsName.trim()
+    const nextDescription = settingsDescription.trim()
+
+    if (!nextName) {
+      toast.error("Channel-Name darf nicht leer sein")
+      return
+    }
+    if (nextName.length > 80) {
+      toast.error("Channel-Name darf maximal 80 Zeichen haben")
+      return
+    }
+    if (nextDescription.length > 500) {
+      toast.error("Beschreibung darf maximal 500 Zeichen haben")
+      return
+    }
+
+    setIsSavingSettings(true)
+    const supabase = createDbClient()
+    const { error } = await supabase
+      .from("channels")
+      .update({
+        name: nextName,
+        description: nextDescription || null,
+        is_public: settingsIsPublic,
+      })
+      .eq("id", channel.id)
+      .eq("owner_id", userId)
+
+    if (error) {
+      toast.error(`Einstellungen konnten nicht gespeichert werden: ${error.message}`)
+      setIsSavingSettings(false)
+      return
+    }
+
+    setChannelName(nextName)
+    setChannelDescription(nextDescription)
+    setChannelIsPublic(settingsIsPublic)
+    toast.success("Channeleinstellungen gespeichert")
+    setIsSavingSettings(false)
+    router.refresh()
   }
 
   const handleJoin = async () => {
@@ -1106,7 +1146,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-foreground">{channel.name}</h1>
+                  <h1 className="text-2xl font-bold text-foreground">{channelName}</h1>
                   {channel.is_verified && (
                     <TooltipProvider>
                       <Tooltip>
@@ -1122,11 +1162,12 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
                     </TooltipProvider>
                   )}
                 </div>
-                {channel.description && (
-                  <p className="text-sm text-muted-foreground mt-1 max-w-xl">{channel.description}</p>
+                {channelDescription && (
+                  <p className="text-sm text-muted-foreground mt-1 max-w-xl">{channelDescription}</p>
                 )}
                 <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {members.length} Mitglieder</span>
+                  <span>{channelIsPublic ? "Oeffentlich" : "Privat"}</span>
                 </div>
               </div>
             </div>
@@ -1173,48 +1214,10 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
 
           {/* Settings Panel for Owner */}
           {isOwner && showSettings && (
-            <div className="mt-4 pt-4 border-t border-border/30 space-y-3">
+            <div className="mt-4 pt-4 border-t border-border/30">
               <p className="text-sm text-muted-foreground mb-2">
-                Klicke auf das Icon oder Banner um es zu aendern (max. 5MB fuer Icon, 10MB fuer Banner)
+                Klicke auf das Icon oder Banner um es zu ändern (max. 5MB für Icon, 10MB für Banner)
               </p>
-              <div className="rounded-xl border border-border/40 bg-secondary/20 p-3">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <p className="text-sm font-semibold text-foreground">Channel werben</p>
-                  {profileXp !== null && (
-                    <p className="text-xs text-muted-foreground">Dein XP: {profileXp}</p>
-                  )}
-                </div>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {channelBoostPackages.map((boostPackage) => {
-                    const hasEnoughXp = profileXp === null || profileXp >= boostPackage.cost
-                    return (
-                      <Button
-                        key={boostPackage.key}
-                        variant="outline"
-                        className="bg-transparent border-border/50 text-foreground h-auto py-2"
-                        disabled={isPromotingChannel || hasPendingPromotionRequest || !hasEnoughXp}
-                        onClick={() => handlePromoteChannel(boostPackage.key, boostPackage.label)}
-                      >
-                        <div className="text-left leading-tight">
-                          <p className="text-xs font-semibold">{boostPackage.label}</p>
-                          <p className="text-[11px] text-muted-foreground">{boostPackage.cost} XP</p>
-                        </div>
-                      </Button>
-                    )
-                  })}
-                </div>
-                {boostedUntilLabel && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {isBoostActive ? "Werbung aktiv bis: " : "Letzte Werbung lief bis: "}
-                    <span className="text-foreground">{boostedUntilLabel}</span>
-                  </p>
-                )}
-                {hasPendingPromotionRequest && (
-                  <p className="text-xs text-amber-400 mt-2">
-                    Offene Werbeanfrage wartet auf Admin/Owner-Freigabe.
-                  </p>
-                )}
-              </div>
             </div>
           )}
         </div>
@@ -1574,3 +1577,4 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
     </div>
   )
 }
+
