@@ -32,8 +32,7 @@ import {
 } from "lucide-react"
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { toast } from "sonner"
-import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns"
-import { de } from "date-fns/locale"
+import { format } from "date-fns"
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react"
 
 // Types
@@ -855,10 +854,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
 
   // Format message time
   const formatMessageTime = (date: string) => {
-    const d = new Date(date)
-    if (isToday(d)) return format(d, "HH:mm")
-    if (isYesterday(d)) return `Gestern ${format(d, "HH:mm")}`
-    return format(d, "dd.MM.yy HH:mm")
+    return format(new Date(date), "HH:mm")
   }
 
   // Conversation list
@@ -984,10 +980,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
                         <p className="font-medium truncate">{info.name}</p>
                         {conversation.last_message_at && (
                           <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(conversation.last_message_at), { 
-                              addSuffix: true, 
-                              locale: de 
-                            })}
+                            {format(new Date(conversation.last_message_at), "HH:mm")}
                           </span>
                         )}
                       </div>
