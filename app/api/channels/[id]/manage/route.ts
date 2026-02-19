@@ -100,8 +100,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Bestaetigung stimmt nicht mit dem Channel-Namen ueberein" }, { status: 400 })
   }
 
-  await prisma.channel.delete({
-    where: { id },
+  await prisma.$transaction(async (tx) => {
+    await tx.channelMember.deleteMany({
+      where: { channelId: id },
+    })
+
+    await tx.channel.delete({
+      where: { id },
+    })
   })
 
   return NextResponse.json({ success: true })

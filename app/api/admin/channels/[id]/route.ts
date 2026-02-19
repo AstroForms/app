@@ -148,8 +148,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       )
     }
 
-    await prisma.channel.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      await tx.channelMember.deleteMany({
+        where: { channelId: id },
+      })
+
+      await tx.channel.delete({
+        where: { id },
+      })
     })
 
     await createAuditLog({

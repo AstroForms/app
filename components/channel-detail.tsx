@@ -915,8 +915,11 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
         throw new Error(typeof data?.error === "string" ? data.error : "Channel konnte nicht geloescht werden")
       }
       toast.success("Channel wurde geloescht")
+      if (typeof window !== "undefined") {
+        window.location.assign("/channels")
+        return
+      }
       router.push("/channels")
-      router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Channel konnte nicht geloescht werden")
     } finally {
