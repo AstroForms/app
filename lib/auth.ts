@@ -56,6 +56,18 @@ async function resolveUserIdFromAuthCandidate(user: { id?: string | null; email?
   return existing?.id ?? null
 }
 
+async function getTwoFactorEnabled(userId: string) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { twoFactorEnabled: true },
+    })
+    return Boolean(user?.twoFactorEnabled)
+  } catch {
+    return false
+  }
+}
+
 const AUTH_FAILURE_DELAY_MS = 350
 async function slowAuthFailure() {
   await new Promise((resolve) => setTimeout(resolve, AUTH_FAILURE_DELAY_MS))
@@ -218,6 +230,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return baseUrl
     },
     async jwt({ token, user }) {
+      const tokenWith2fa = token as typeof token & {
+        twoFactorEnabled?: boolean
+        twoFactorVerified?: boolean
+      }
+
       if (user) {
         token.id = user.id
       }
@@ -226,6 +243,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (userId && (await isBannedSafe(userId))) {
         token.id = undefined
         token.sub = undefined
+        tokenWith2fa.twoFactorEnabled = false
+        tokenWith2fa.twoFactorVerified = false
+      }
+
+      if (userId) {
+        if (typeof tokenWith2fa.twoFactorEnabled !== "boolean" || user) {
+          tokenWith2fa.twoFactorEnabled = await getTwoFactorEnabled(userId)
+        }
+        if (!tokenWith2fa.twoFactorEnabled) {
+          tokenWith2fa.twoFactorVerified = true
+        } else if (user) {
+          tokenWith2fa.twoFactorVerified = false
+        }
       }
 
       return token
@@ -247,6 +277,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       session.user.id = resolvedUserId
+      session.user.twoFactorEnabled = Boolean((token as { twoFactorEnabled?: unknown })?.twoFactorEnabled)
+      session.user.twoFactorVerified = Boolean((token as { twoFactorVerified?: unknown })?.twoFactorVerified)
 
       try {
         // Profile enrichment is optional; login/session must not fail if DB lookup hiccups.
@@ -314,6 +346,8 @@ declare module "next-auth" {
       username?: string | null
       role?: string
       avatarUrl?: string | null
+      twoFactorEnabled?: boolean
+      twoFactorVerified?: boolean
     }
   }
 }

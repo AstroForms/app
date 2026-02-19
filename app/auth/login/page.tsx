@@ -11,7 +11,8 @@ import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Rocket, Github, KeyRound } from "lucide-react"
+import Image from "next/image"
+import { Github, KeyRound } from "lucide-react"
 
 function DiscordIcon({ className }: { className?: string }) {
   return (
@@ -53,13 +54,13 @@ export default function LoginPage() {
       case "AccountBanned":
         return "Dein Account ist aktuell gesperrt. Bitte kontaktiere den Support."
       case "CredentialsSignin":
-        return "Login fehlgeschlagen. Pruefe Benutzername/E-Mail und Passwort."
+        return "Login fehlgeschlagen. Prüfe Benutzername/E-Mail und Passwort."
       case "AccessDenied":
-        return "Zugriff verweigert. Dein Account ist eventuell eingeschraenkt."
+        return "Zugriff verweigert. Dein Account ist eventuell eingeschränkt."
       case "Configuration":
-        return "Login ist gerade nicht verfuegbar (Server-Konfiguration). Bitte spaeter erneut versuchen."
+        return "Login ist gerade nicht verfuegbar (Configuration). Bitte später erneut versuchen."
       case "OAuthAccountNotLinked":
-        return "Dieser OAuth-Login ist nicht mit deinem Account verknuepft."
+        return "Dieser OAuth-Login ist nicht mit deinem Account verknüpft."
       default:
         return "Anmeldung fehlgeschlagen. Bitte erneut versuchen."
     }
@@ -89,7 +90,7 @@ export default function LoginPage() {
         throw new Error("Login fehlgeschlagen")
       }
       if (result.error || !result.ok) {
-        throw new Error(mapAuthError(result.error) || "Ungueltige Anmeldedaten")
+        throw new Error(mapAuthError(result.error) || "Ungültige Anmeldedaten")
       }
       router.push(result.url || "/")
     } catch (err: unknown) {
@@ -116,9 +117,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <Rocket className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-foreground">AstroForms</span>
+          <Link href="/" className="inline-flex items-center mb-4">
+            <Image src="/banner.png" alt="AstroForms Logo" width={180} height={38} className="rounded-sm" />
           </Link>
           <p className="text-muted-foreground">Melde dich bei deinem Account an</p>
         </div>
@@ -215,7 +215,7 @@ export default function LoginPage() {
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Mit der Anmeldung stimmst du unseren{" "}
-          <Link href="/legal/tos" className="text-primary hover:underline">AGB</Link>,{" "}
+          <Link href="/legal/tos" className="text-primary hover:underline">Nutzungsbedingungen</Link>,{" "}
           <Link href="/legal/privacy" className="text-primary hover:underline">Datenschutz</Link> und{" "}
           <Link href="/legal/impressum" className="text-primary hover:underline">Impressum</Link> zu.
         </p>

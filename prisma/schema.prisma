@@ -70,6 +70,9 @@ model User {
   emailVerified DateTime? @map("email_verified")
   image         String?
   password      String? // hashed password
+  twoFactorEnabled    Boolean  @default(false) @map("two_factor_enabled")
+  twoFactorSecret     String?  @map("two_factor_secret")
+  twoFactorTempSecret String?  @map("two_factor_temp_secret")
   accounts      Account[]
   sessions      Session[]
   authenticators Authenticator[]

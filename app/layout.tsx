@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { Space_Grotesk, Fira_Code } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/components/auth-provider"
+import { ConsentBanner } from "@/components/consent-banner"
 
 import "./globals.css"
 
@@ -113,6 +114,7 @@ export default function RootLayout({
           }}
         />
         <AuthProvider>{children}</AuthProvider>
+        <ConsentBanner />
         <Toaster />
       </body>
     </html>

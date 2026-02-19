@@ -91,7 +91,7 @@ export function ChannelsSidebar({
             <Link href="/legal/tos" className="hover:text-muted-foreground transition-colors">Richtlinien</Link>
             <Link href="/legal/impressum" className="hover:text-muted-foreground transition-colors">Impressum</Link>
             <Link href="/legal/privacy" className="hover:text-muted-foreground transition-colors">Datenschutz</Link>
-            <Link href="/legal/tos" className="hover:text-muted-foreground transition-colors">AGB</Link>
+            <Link href="/legal/tos" className="hover:text-muted-foreground transition-colors">Nutzungsbedingungen</Link>
           </div>
           <p className="text-[10px] text-muted-foreground/30 mt-1.5">&copy; 2026 AstroForms</p>
         </div>

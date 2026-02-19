@@ -1,13 +1,41 @@
 import Link from "next/link"
-import { Rocket, ArrowLeft } from "lucide-react"
+import Image from "next/image"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "AGB",
-  description: "Allgemeine Geschaeftsbedingungen von AstroForms.",
+  title: "Nutzungsbedingungen",
+  description: "Nutzungsbedingungen von AstroForms.",
   alternates: { canonical: "/legal/tos" },
 }
+
+const TERMS_CHANGELOG = [
+  {
+    version: "v1.2",
+    date: "19. Februar 2026",
+    changes: [
+      "Umbenennung von AGB auf Nutzungsbedingungen.",
+      "Ergänzung eines Cookie-/Consent-Hinweises.",
+      "Sicherheitsabschnitt um 2FA-Hinweis ergänzt.",
+    ],
+  },
+  {
+    version: "v1.1",
+    date: "9. Februar 2026",
+    changes: [
+      "Klarstellungen zu Bots, Automatisierungen und Moderation.",
+      "Präzisierung zum XP- und Levelsystem.",
+    ],
+  },
+  {
+    version: "v1.0",
+    date: "1. Februar 2026",
+    changes: [
+      "Erstveroeffentlichung der Nutzungsbedingungen.",
+    ],
+  },
+]
 
 export default function TosPage() {
   return (
@@ -15,8 +43,7 @@ export default function TosPage() {
       <header className="border-b border-border/50 bg-card/40 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
-            <Rocket className="h-6 w-6 text-primary" />
-            <span className="font-bold text-foreground">AstroForms</span>
+            <Image src="/banner.png" alt="AstroForms Logo" width={150} height={32} className="rounded-sm" />
           </Link>
           <Button variant="ghost" asChild className="text-muted-foreground">
             <Link href="/"><ArrowLeft className="h-4 w-4 mr-2" /> Zurueck</Link>
@@ -25,8 +52,8 @@ export default function TosPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-16">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Allgemeine Geschaeftsbedingungen (AGB)</h1>
-        <p className="text-muted-foreground mb-10">Zuletzt aktualisiert: 9. Februar 2026</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Nutzungsbedingungen</h1>
+        <p className="text-muted-foreground mb-10">Zuletzt aktualisiert: 19. Februar 2026</p>
 
         <div className="prose prose-invert max-w-none">
           <section className="glass rounded-2xl p-8 mb-6">
@@ -65,7 +92,7 @@ export default function TosPage() {
             <h2 className="text-xl font-semibold text-foreground mb-4">4. Channels und Inhalte</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Nutzer koennen eigene Channels erstellen und Inhalte veroeffentlichen. Fuer die Inhalte ist der jeweilige Nutzer selbst verantwortlich. 
-              AstroForms behaelt sich das Recht vor, Inhalte und Channels zu entfernen, die gegen diese AGB verstossen.
+              AstroForms behaelt sich das Recht vor, Inhalte und Channels zu entfernen, die gegen diese Nutzungsbedingungen verstossen.
               Channel-Owner und Moderatoren sind fuer die Einhaltung der Regeln in ihren Channels mitverantwortlich.
             </p>
           </section>
@@ -94,24 +121,41 @@ export default function TosPage() {
             </p>
           </section>
 
-          <section className="glass rounded-2xl p-8">
-            <h2 className="text-xl font-semibold text-foreground mb-4">8. Aenderungen der AGB</h2>
+          <section className="glass rounded-2xl p-8 mb-6">
+            <h2 className="text-xl font-semibold text-foreground mb-4">8. Aenderungen der Nutzungsbedingungen</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              AstroForms behaelt sich das Recht vor, diese AGB jederzeit zu aendern. Aenderungen werden den Nutzern rechtzeitig mitgeteilt. 
-              Die weitere Nutzung der Plattform nach Aenderung der AGB gilt als Zustimmung zu den geaenderten Bedingungen.
+              AstroForms behaelt sich das Recht vor, diese Nutzungsbedingungen jederzeit zu aendern. Aenderungen werden den Nutzern rechtzeitig mitgeteilt. 
+              Die weitere Nutzung der Plattform nach Aenderung der Nutzungsbedingungen gilt als Zustimmung zu den geaenderten Bedingungen.
             </p>
+          </section>
+
+          <section className="glass rounded-2xl p-8">
+            <h2 className="text-xl font-semibold text-foreground mb-4">9. Versionshistorie</h2>
+            <div className="space-y-4">
+              {TERMS_CHANGELOG.map((entry) => (
+                <div key={entry.version} className="rounded-xl border border-border/50 bg-secondary/20 p-4">
+                  <p className="text-sm font-medium text-foreground">
+                    {entry.version} <span className="text-muted-foreground font-normal">({entry.date})</span>
+                  </p>
+                  <ul className="mt-2 list-disc list-inside text-sm text-muted-foreground flex flex-col gap-1">
+                    {entry.changes.map((change) => (
+                      <li key={change}>{change}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </section>
         </div>
       </main>
 
       <footer className="border-t border-border/50 px-6 py-8">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Rocket className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-foreground">AstroForms</span>
-          </div>
+          <Link href="/">
+            <Image src="/banner.png" alt="AstroForms Logo" width={140} height={30} className="rounded-sm" />
+          </Link>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <Link href="/legal/tos" className="text-primary">AGB</Link>
+            <Link href="/legal/tos" className="text-primary">Nutzungsbedingungen</Link>
             <Link href="/legal/privacy" className="hover:text-foreground transition-colors">Datenschutz</Link>
             <Link href="/legal/impressum" className="hover:text-foreground transition-colors">Impressum</Link>
           </div>

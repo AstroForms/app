@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { Rocket, ArrowLeft } from "lucide-react"
+import Image from "next/image"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Metadata } from "next"
 
@@ -15,8 +16,7 @@ export default function PrivacyPage() {
       <header className="border-b border-border/50 bg-card/40 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
-            <Rocket className="h-6 w-6 text-primary" />
-            <span className="font-bold text-foreground">AstroForms</span>
+            <Image src="/banner.png" alt="AstroForms Logo" width={150} height={32} className="rounded-sm" />
           </Link>
           <Button variant="ghost" asChild className="text-muted-foreground">
             <Link href="/"><ArrowLeft className="h-4 w-4 mr-2" /> Zurück</Link>
@@ -112,12 +112,11 @@ export default function PrivacyPage() {
 
       <footer className="border-t border-border/50 px-6 py-8">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Rocket className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-foreground">AstroForms</span>
-          </div>
+          <Link href="/">
+            <Image src="/banner.png" alt="AstroForms Logo" width={140} height={30} className="rounded-sm" />
+          </Link>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <Link href="/legal/tos" className="hover:text-foreground transition-colors">AGB</Link>
+            <Link href="/legal/tos" className="hover:text-foreground transition-colors">Nutzungsbedingungen</Link>
             <Link href="/legal/privacy" className="text-primary">Datenschutz</Link>
             <Link href="/legal/impressum" className="hover:text-foreground transition-colors">Impressum</Link>
           </div>

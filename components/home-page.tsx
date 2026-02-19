@@ -397,7 +397,7 @@ export function HomePage({
                 <span>© 2026</span>
               </div>
               <div className="flex items-center gap-4">
-                <Link href="/legal/tos" className="hover:text-foreground transition-colors">AGB</Link>
+                <Link href="/legal/tos" className="hover:text-foreground transition-colors">Nutzungsbedingungen</Link>
                 <Link href="/legal/privacy" className="hover:text-foreground transition-colors">Datenschutz</Link>
                 <Link href="/legal/impressum" className="hover:text-foreground transition-colors">Impressum</Link>
               </div>

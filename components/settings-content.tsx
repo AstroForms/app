@@ -67,6 +67,11 @@ type AccountSettings = {
   profileVisibilityTips: boolean
 }
 
+type TwoFactorState = {
+  enabled: boolean
+  setupPending: boolean
+}
+
 export function SettingsContent({ profile }: { profile: Profile | null }) {
   const [username, setUsername] = useState(profile?.username || "")
   const [displayName, setDisplayName] = useState(profile?.display_name || "")
@@ -95,6 +100,14 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmNewPassword, setConfirmNewPassword] = useState("")
+  const [twoFactor, setTwoFactor] = useState<TwoFactorState>({ enabled: false, setupPending: false })
+  const [twoFactorSetupSecret, setTwoFactorSetupSecret] = useState("")
+  const [twoFactorSetupQr, setTwoFactorSetupQr] = useState("")
+  const [twoFactorSetupCode, setTwoFactorSetupCode] = useState("")
+  const [twoFactorDisableCode, setTwoFactorDisableCode] = useState("")
+  const [isTwoFactorLoading, setIsTwoFactorLoading] = useState(false)
+  const [isTwoFactorVerifying, setIsTwoFactorVerifying] = useState(false)
+  const [isTwoFactorDisabling, setIsTwoFactorDisabling] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [deletePassword, setDeletePassword] = useState("")
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
@@ -151,6 +164,29 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
   useEffect(() => {
     void loadAccountSettings()
   }, [loadAccountSettings])
+
+  const loadTwoFactorState = useCallback(async () => {
+    setIsTwoFactorLoading(true)
+    try {
+      const response = await fetch("/api/account/2fa", { cache: "no-store" })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || "2FA-Status konnte nicht geladen werden")
+      }
+      setTwoFactor({
+        enabled: Boolean(data.enabled),
+        setupPending: Boolean(data.setupPending),
+      })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "2FA-Status konnte nicht geladen werden")
+    } finally {
+      setIsTwoFactorLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadTwoFactorState()
+  }, [loadTwoFactorState])
 
   const uploadImage = async (blob: Blob, type: "avatar" | "banner") => {
     if (!profile) return null
@@ -390,6 +426,87 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       toast.error(err instanceof Error ? err.message : "Passwort konnte nicht geaendert werden")
     } finally {
       setIsChangingPassword(false)
+    }
+  }
+
+  const startTwoFactorSetup = async () => {
+    setIsTwoFactorLoading(true)
+    try {
+      const response = await fetch("/api/account/2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "setup" }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || "2FA-Setup konnte nicht gestartet werden")
+      }
+      setTwoFactorSetupSecret(typeof data.secret === "string" ? data.secret : "")
+      setTwoFactorSetupQr(typeof data.qrDataUrl === "string" ? data.qrDataUrl : "")
+      setTwoFactorSetupCode("")
+      setTwoFactor((prev) => ({ ...prev, setupPending: true }))
+      toast.success("2FA-Setup gestartet. Bitte mit einem Code bestaetigen.")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "2FA-Setup konnte nicht gestartet werden")
+    } finally {
+      setIsTwoFactorLoading(false)
+    }
+  }
+
+  const confirmTwoFactorSetup = async () => {
+    if (!twoFactorSetupCode) {
+      toast.error("Bitte den 6-stelligen Code eingeben.")
+      return
+    }
+    setIsTwoFactorVerifying(true)
+    try {
+      const response = await fetch("/api/account/2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "enable", token: twoFactorSetupCode }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || "2FA konnte nicht aktiviert werden")
+      }
+      setTwoFactor({ enabled: true, setupPending: false })
+      setTwoFactorSetupSecret("")
+      setTwoFactorSetupQr("")
+      setTwoFactorSetupCode("")
+      toast.success("2FA wurde aktiviert.")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "2FA konnte nicht aktiviert werden")
+    } finally {
+      setIsTwoFactorVerifying(false)
+    }
+  }
+
+  const disableTwoFactor = async () => {
+    if (!twoFactorDisableCode) {
+      toast.error("Bitte den 6-stelligen Code eingeben.")
+      return
+    }
+    setIsTwoFactorDisabling(true)
+    try {
+      const response = await fetch("/api/account/2fa", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: twoFactorDisableCode }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || "2FA konnte nicht deaktiviert werden")
+      }
+      setTwoFactor({ enabled: false, setupPending: false })
+      setTwoFactorDisableCode("")
+      setTwoFactorSetupSecret("")
+      setTwoFactorSetupQr("")
+      setTwoFactorSetupCode("")
+      toast.success("2FA wurde deaktiviert.")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "2FA konnte nicht deaktiviert werden")
+    } finally {
+      setIsTwoFactorDisabling(false)
     }
   }
 
@@ -721,6 +838,94 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
         <TabsContent value="account">
           <div className="glass rounded-2xl p-6 md:p-8">
             <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Zwei-Faktor-Authentifizierung (2FA)</h2>
+                <p className="text-sm text-muted-foreground">
+                  Zusaetzlicher Schutz mit einem 6-stelligen Code aus deiner Authenticator-App.
+                </p>
+              </div>
+              <div className="space-y-3 rounded-xl bg-secondary/30 p-4">
+                <p className="text-sm text-foreground">
+                  Status:{" "}
+                  <span className={twoFactor.enabled ? "font-medium text-green-500" : "text-muted-foreground"}>
+                    {isTwoFactorLoading ? "Laden..." : twoFactor.enabled ? "Aktiviert" : "Deaktiviert"}
+                  </span>
+                </p>
+                {!twoFactor.enabled && !twoFactor.setupPending && (
+                  <Button onClick={startTwoFactorSetup} disabled={isTwoFactorLoading} className="h-10 text-primary-foreground font-semibold">
+                    2FA aktivieren
+                  </Button>
+                )}
+                {twoFactor.setupPending && (
+                  <div className="space-y-3 rounded-lg border border-border/50 bg-background/30 p-3">
+                    <p className="text-xs text-muted-foreground">1. QR-Code scannen oder manuellen Key in der App eintragen.</p>
+                    {!twoFactorSetupQr && !twoFactorSetupSecret && (
+                      <div className="rounded-md border border-border/40 bg-secondary/30 p-3 text-xs text-muted-foreground">
+                        Setup war bereits gestartet. Starte es neu, um einen aktuellen QR-Code zu erhalten.
+                      </div>
+                    )}
+                    {twoFactorSetupQr && (
+                      <img src={twoFactorSetupQr} alt="2FA QR Code" className="h-40 w-40 rounded-md border border-border/50 bg-white p-1" />
+                    )}
+                    {twoFactorSetupSecret && (
+                      <p className="break-all text-xs text-muted-foreground">
+                        Manueller Key: <span className="font-mono text-foreground">{twoFactorSetupSecret}</span>
+                      </p>
+                    )}
+                    <div className="grid gap-2">
+                      <Label className="text-foreground">2FA-Code bestaetigen</Label>
+                      <Input
+                        value={twoFactorSetupCode}
+                        onChange={(e) => setTwoFactorSetupCode(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
+                        inputMode="numeric"
+                        placeholder="123456"
+                        className="h-11 bg-secondary/50 border-border/50"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={confirmTwoFactorSetup} disabled={isTwoFactorVerifying} className="h-10 text-primary-foreground font-semibold">
+                        {isTwoFactorVerifying ? "Pruefen..." : "Aktivierung bestaetigen"}
+                      </Button>
+                      <Button onClick={startTwoFactorSetup} variant="secondary" className="h-10" disabled={isTwoFactorLoading}>
+                        QR neu laden
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-10 bg-transparent"
+                        onClick={async () => {
+                          await fetch("/api/account/2fa", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ mode: "cancel" }),
+                          })
+                          setTwoFactorSetupSecret("")
+                          setTwoFactorSetupQr("")
+                          setTwoFactorSetupCode("")
+                          await loadTwoFactorState()
+                        }}
+                      >
+                        Abbrechen
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {twoFactor.enabled && (
+                  <div className="space-y-2 rounded-lg border border-border/50 bg-background/30 p-3">
+                    <Label className="text-foreground">Zum Deaktivieren aktuellen 2FA-Code eingeben</Label>
+                    <Input
+                      value={twoFactorDisableCode}
+                      onChange={(e) => setTwoFactorDisableCode(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
+                      inputMode="numeric"
+                      placeholder="123456"
+                      className="h-11 bg-secondary/50 border-border/50"
+                    />
+                    <Button variant="destructive" onClick={disableTwoFactor} disabled={isTwoFactorDisabling} className="h-10 font-semibold">
+                      {isTwoFactorDisabling ? "Deaktiviere..." : "2FA deaktivieren"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Passwort ändern</h2>
                 <p className="text-sm text-muted-foreground">Setze ein neues Passwort für deinen Account.</p>

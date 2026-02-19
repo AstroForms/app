@@ -186,7 +186,7 @@ export default function SignUpPage() {
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Mit der Registrierung stimmst du unseren{" "}
-          <Link href="/legal/tos" className="text-primary hover:underline">AGB</Link>,{" "}
+          <Link href="/legal/tos" className="text-primary hover:underline">Nutzungsbedingungen</Link>,{" "}
           <Link href="/legal/privacy" className="text-primary hover:underline">Datenschutz</Link> und{" "}
           <Link href="/legal/impressum" className="text-primary hover:underline">Impressum</Link> zu.
         </p>
