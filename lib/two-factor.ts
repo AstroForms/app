@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "crypto"
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto"
 import { generateSecret, generateURI, verifySync } from "otplib"
 import { TWO_FACTOR_COOKIE_NAME } from "@/lib/two-factor-constants"
 
@@ -42,6 +42,37 @@ export function verifyTotpToken(token: string, secret: string) {
   return typeof result === "object" && result !== null && "valid" in result
     ? Boolean(result.valid)
     : false
+}
+
+function normalizeBackupCode(code: string) {
+  return code.replace(/[^A-Za-z0-9]/g, "").toUpperCase()
+}
+
+function hashBackupCode(code: string) {
+  return createHash("sha256").update(normalizeBackupCode(code)).digest("hex")
+}
+
+export function generateBackupCodes(count = 10) {
+  const codes: string[] = []
+  for (let i = 0; i < count; i += 1) {
+    const raw = randomBytes(5).toString("hex").toUpperCase()
+    codes.push(`${raw.slice(0, 5)}-${raw.slice(5)}`)
+  }
+  return codes
+}
+
+export function hashBackupCodes(codes: string[]) {
+  return codes.map(hashBackupCode)
+}
+
+export function consumeBackupCode(input: string, storedHashes: string[]) {
+  const hashed = hashBackupCode(input)
+  const index = storedHashes.findIndex((value) => value === hashed)
+  if (index < 0) {
+    return { matched: false, remaining: storedHashes }
+  }
+  const remaining = storedHashes.filter((_, i) => i !== index)
+  return { matched: true, remaining }
 }
 
 function signPayload(payload: string, secret: string) {

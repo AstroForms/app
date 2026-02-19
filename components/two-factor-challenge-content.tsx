@@ -48,17 +48,16 @@ export function TwoFactorChallengeContent({ callbackUrl }: TwoFactorChallengeCon
           <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">2FA-Bestaetigung</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Gib den 6-stelligen Code aus deiner Authenticator-App ein.
+            Gib den 6-stelligen Code aus deiner Authenticator-App oder einen Backup-Code ein.
           </p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <Input
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
-            placeholder="123456"
-            className="h-11 bg-secondary/50 border-border/50 text-center tracking-[0.3em] text-lg"
-            inputMode="numeric"
+            onChange={(e) => setCode(e.target.value.replace(/[^A-Za-z0-9-]/g, "").slice(0, 12).toUpperCase())}
+            placeholder="123456 oder ABCDE-12345"
+            className="h-11 bg-secondary/50 border-border/50 text-center text-lg"
             autoComplete="one-time-code"
           />
           {error && (

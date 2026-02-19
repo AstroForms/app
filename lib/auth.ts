@@ -9,6 +9,7 @@ import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
 import { isUserCurrentlyBanned } from "@/lib/bans"
+import { CURRENT_TERMS_VERSION } from "@/lib/legal-constants"
 
 const isProd = process.env.NODE_ENV === "production"
 const sessionCookieName = isProd ? "__Secure-authjs.session-token" : "authjs.session-token"
@@ -65,6 +66,19 @@ async function getTwoFactorEnabled(userId: string) {
     return Boolean(user?.twoFactorEnabled)
   } catch {
     return false
+  }
+}
+
+async function getAcceptedTermsVersion(userId: string) {
+  try {
+    const acceptance = await prisma.termsAcceptance.findFirst({
+      where: { userId },
+      orderBy: { acceptedAt: "desc" },
+      select: { version: true },
+    })
+    return acceptance?.version ?? null
+  } catch {
+    return null
   }
 }
 
@@ -233,6 +247,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       const tokenWith2fa = token as typeof token & {
         twoFactorEnabled?: boolean
         twoFactorVerified?: boolean
+        acceptedTermsVersion?: string | null
       }
 
       if (user) {
@@ -255,6 +270,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           tokenWith2fa.twoFactorVerified = true
         } else if (user) {
           tokenWith2fa.twoFactorVerified = false
+        }
+
+        if (typeof tokenWith2fa.acceptedTermsVersion === "undefined" || user) {
+          tokenWith2fa.acceptedTermsVersion = await getAcceptedTermsVersion(userId)
         }
       }
 
@@ -279,6 +298,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.id = resolvedUserId
       session.user.twoFactorEnabled = Boolean((token as { twoFactorEnabled?: unknown })?.twoFactorEnabled)
       session.user.twoFactorVerified = Boolean((token as { twoFactorVerified?: unknown })?.twoFactorVerified)
+      session.user.acceptedTermsVersion = ((token as { acceptedTermsVersion?: unknown })?.acceptedTermsVersion as string | null | undefined) ?? null
+      session.user.requiresTermsAcceptance = session.user.acceptedTermsVersion !== CURRENT_TERMS_VERSION
 
       try {
         // Profile enrichment is optional; login/session must not fail if DB lookup hiccups.
@@ -348,6 +369,8 @@ declare module "next-auth" {
       avatarUrl?: string | null
       twoFactorEnabled?: boolean
       twoFactorVerified?: boolean
+      acceptedTermsVersion?: string | null
+      requiresTermsAcceptance?: boolean
     }
   }
 }

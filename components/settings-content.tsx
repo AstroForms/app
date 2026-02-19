@@ -70,6 +70,7 @@ type AccountSettings = {
 type TwoFactorState = {
   enabled: boolean
   setupPending: boolean
+  backupCodesRemaining: number
 }
 
 export function SettingsContent({ profile }: { profile: Profile | null }) {
@@ -100,14 +101,17 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmNewPassword, setConfirmNewPassword] = useState("")
-  const [twoFactor, setTwoFactor] = useState<TwoFactorState>({ enabled: false, setupPending: false })
+  const [twoFactor, setTwoFactor] = useState<TwoFactorState>({ enabled: false, setupPending: false, backupCodesRemaining: 0 })
   const [twoFactorSetupSecret, setTwoFactorSetupSecret] = useState("")
   const [twoFactorSetupQr, setTwoFactorSetupQr] = useState("")
   const [twoFactorSetupCode, setTwoFactorSetupCode] = useState("")
   const [twoFactorDisableCode, setTwoFactorDisableCode] = useState("")
+  const [twoFactorBackupCodes, setTwoFactorBackupCodes] = useState<string[]>([])
+  const [twoFactorRegenerateCode, setTwoFactorRegenerateCode] = useState("")
   const [isTwoFactorLoading, setIsTwoFactorLoading] = useState(false)
   const [isTwoFactorVerifying, setIsTwoFactorVerifying] = useState(false)
   const [isTwoFactorDisabling, setIsTwoFactorDisabling] = useState(false)
+  const [isTwoFactorRegenerating, setIsTwoFactorRegenerating] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [deletePassword, setDeletePassword] = useState("")
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
@@ -176,6 +180,7 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       setTwoFactor({
         enabled: Boolean(data.enabled),
         setupPending: Boolean(data.setupPending),
+        backupCodesRemaining: Number(data.backupCodesRemaining || 0),
       })
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "2FA-Status konnte nicht geladen werden")
@@ -445,6 +450,7 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       setTwoFactorSetupQr(typeof data.qrDataUrl === "string" ? data.qrDataUrl : "")
       setTwoFactorSetupCode("")
       setTwoFactor((prev) => ({ ...prev, setupPending: true }))
+      setTwoFactorBackupCodes([])
       toast.success("2FA-Setup gestartet. Bitte mit einem Code bestaetigen.")
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "2FA-Setup konnte nicht gestartet werden")
@@ -469,7 +475,12 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       if (!response.ok) {
         throw new Error(data.error || "2FA konnte nicht aktiviert werden")
       }
-      setTwoFactor({ enabled: true, setupPending: false })
+      setTwoFactor({
+        enabled: true,
+        setupPending: false,
+        backupCodesRemaining: Number(data.backupCodesRemaining || 0),
+      })
+      setTwoFactorBackupCodes(Array.isArray(data.backupCodes) ? data.backupCodes.filter((v: unknown): v is string => typeof v === "string") : [])
       setTwoFactorSetupSecret("")
       setTwoFactorSetupQr("")
       setTwoFactorSetupCode("")
@@ -497,16 +508,48 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       if (!response.ok) {
         throw new Error(data.error || "2FA konnte nicht deaktiviert werden")
       }
-      setTwoFactor({ enabled: false, setupPending: false })
+      setTwoFactor({ enabled: false, setupPending: false, backupCodesRemaining: 0 })
       setTwoFactorDisableCode("")
       setTwoFactorSetupSecret("")
       setTwoFactorSetupQr("")
       setTwoFactorSetupCode("")
+      setTwoFactorBackupCodes([])
+      setTwoFactorRegenerateCode("")
       toast.success("2FA wurde deaktiviert.")
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "2FA konnte nicht deaktiviert werden")
     } finally {
       setIsTwoFactorDisabling(false)
+    }
+  }
+
+  const regenerateBackupCodes = async () => {
+    if (!twoFactorRegenerateCode) {
+      toast.error("Bitte 2FA- oder Backup-Code eingeben.")
+      return
+    }
+    setIsTwoFactorRegenerating(true)
+    try {
+      const response = await fetch("/api/account/2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "regenerate-backup-codes", token: twoFactorRegenerateCode }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || "Backup-Codes konnten nicht erneuert werden")
+      }
+      setTwoFactor((prev) => ({
+        ...prev,
+        backupCodesRemaining: Number(data.backupCodesRemaining || 0),
+      }))
+      setTwoFactorBackupCodes(Array.isArray(data.backupCodes) ? data.backupCodes.filter((v: unknown): v is string => typeof v === "string") : [])
+      setTwoFactorRegenerateCode("")
+      toast.success("Neue Backup-Codes erstellt.")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Backup-Codes konnten nicht erneuert werden")
+    } finally {
+      setIsTwoFactorRegenerating(false)
     }
   }
 
@@ -922,6 +965,41 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
                     <Button variant="destructive" onClick={disableTwoFactor} disabled={isTwoFactorDisabling} className="h-10 font-semibold">
                       {isTwoFactorDisabling ? "Deaktiviere..." : "2FA deaktivieren"}
                     </Button>
+                  </div>
+                )}
+
+                {twoFactor.enabled && (
+                  <div className="space-y-3 rounded-lg border border-border/50 bg-background/30 p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Verbleibende Backup-Codes: <span className="font-medium text-foreground">{twoFactor.backupCodesRemaining}</span>
+                    </p>
+                    <div className="grid gap-2">
+                      <Label className="text-foreground">Neue Backup-Codes erstellen (2FA- oder Backup-Code)</Label>
+                      <Input
+                        value={twoFactorRegenerateCode}
+                        onChange={(e) => setTwoFactorRegenerateCode(e.target.value.replace(/[^A-Za-z0-9-]/g, "").slice(0, 12).toUpperCase())}
+                        placeholder="123456 oder ABCDE-12345"
+                        className="h-11 bg-secondary/50 border-border/50"
+                      />
+                    </div>
+                    <Button onClick={regenerateBackupCodes} disabled={isTwoFactorRegenerating} className="h-10 text-primary-foreground font-semibold">
+                      {isTwoFactorRegenerating ? "Erstelle..." : "Backup-Codes erneuern"}
+                    </Button>
+                  </div>
+                )}
+
+                {twoFactorBackupCodes.length > 0 && (
+                  <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                    <p className="text-xs font-medium text-foreground">
+                      Backup-Codes (einmalig angezeigt). Bitte sicher speichern:
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {twoFactorBackupCodes.map((code) => (
+                        <div key={code} className="rounded-md bg-background/60 px-3 py-2 text-xs font-mono text-foreground">
+                          {code}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

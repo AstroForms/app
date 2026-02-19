@@ -4,6 +4,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { isUserCurrentlyBanned } from "@/lib/bans"
 import { TWO_FACTOR_COOKIE_NAME } from "@/lib/two-factor-constants"
 import { verifyTwoFactorProofValueEdge } from "@/lib/two-factor-edge"
+import { CURRENT_TERMS_VERSION, LEGAL_ACCEPTANCE_COOKIE_NAME } from "@/lib/legal-constants"
+import { verifyLegalAcceptanceProofValueEdge } from "@/lib/legal-edge"
 
 // Protected routes that require authentication
 const protectedRoutes = [
@@ -28,9 +30,16 @@ export default auth(async (req) => {
       : null
   const isLoggedIn = !!sessionUserId
   const twoFactorEnabled = req.auth?.user?.twoFactorEnabled === true
+  const acceptedTermsVersion =
+    typeof req.auth?.user?.acceptedTermsVersion === "string" ? req.auth.user.acceptedTermsVersion : null
   const hasTwoFactorProof =
     !!sessionUserId &&
     (await verifyTwoFactorProofValueEdge(req.cookies.get(TWO_FACTOR_COOKIE_NAME)?.value, sessionUserId))
+  const hasLegalAcceptanceProof =
+    !!sessionUserId &&
+    (await verifyLegalAcceptanceProofValueEdge(req.cookies.get(LEGAL_ACCEPTANCE_COOKIE_NAME)?.value, sessionUserId))
+  const hasAcceptedCurrentTerms =
+    acceptedTermsVersion === CURRENT_TERMS_VERSION || hasLegalAcceptanceProof
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     nextUrl.pathname.startsWith(route)
@@ -39,6 +48,11 @@ export default auth(async (req) => {
     nextUrl.pathname.startsWith(route)
   )
   const isTwoFactorRoute = nextUrl.pathname.startsWith("/auth/2fa-challenge")
+  const isLegalAcceptanceRoute = nextUrl.pathname.startsWith("/legal/acceptance")
+  const isLegalContentRoute =
+    nextUrl.pathname.startsWith("/legal/tos") ||
+    nextUrl.pathname.startsWith("/legal/privacy") ||
+    nextUrl.pathname.startsWith("/legal/impressum")
 
   if (sessionUserId && (await isUserCurrentlyBanned(sessionUserId))) {
     const loginUrl = new URL("/auth/login", nextUrl)
@@ -92,11 +106,29 @@ export default auth(async (req) => {
     return NextResponse.redirect(new URL(callbackUrl, nextUrl))
   }
 
+  if (
+    isLoggedIn &&
+    !hasAcceptedCurrentTerms &&
+    !isLegalAcceptanceRoute &&
+    !isLegalContentRoute &&
+    !isTwoFactorRoute
+  ) {
+    const acceptanceUrl = new URL("/legal/acceptance", nextUrl)
+    acceptanceUrl.searchParams.set("callbackUrl", `${nextUrl.pathname}${nextUrl.search}`)
+    return NextResponse.redirect(acceptanceUrl)
+  }
+
+  if (isLegalAcceptanceRoute && hasAcceptedCurrentTerms) {
+    const callbackUrl = nextUrl.searchParams.get("callbackUrl") || "/"
+    return NextResponse.redirect(new URL(callbackUrl, nextUrl))
+  }
+
   const response = NextResponse.next()
   response.cookies.delete("__Secure-authjs.callback-url")
   response.cookies.delete("authjs.callback-url")
   if (!isLoggedIn) {
     response.cookies.delete(TWO_FACTOR_COOKIE_NAME)
+    response.cookies.delete(LEGAL_ACCEPTANCE_COOKIE_NAME)
   }
   return response
 })

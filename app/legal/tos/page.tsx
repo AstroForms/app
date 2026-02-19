@@ -3,6 +3,7 @@ import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Metadata } from "next"
+import { CURRENT_TERMS_VERSION } from "@/lib/legal-constants"
 
 export const metadata: Metadata = {
   title: "Nutzungsbedingungen",
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 
 const TERMS_CHANGELOG = [
   {
-    version: "v1.2",
+    version: CURRENT_TERMS_VERSION,
     date: "19. Februar 2026",
     changes: [
       "Umbenennung von AGB auf Nutzungsbedingungen.",
