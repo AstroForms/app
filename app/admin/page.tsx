@@ -2,6 +2,7 @@ import { createDbServer } from "@/lib/db-server"
 import { redirect } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { AdminContent } from "@/components/admin-content"
+import { prisma } from "@/lib/db"
 
 export default async function AdminPage() {
   const supabase = await createDbServer()
@@ -51,6 +52,44 @@ export default async function AdminPage() {
     .order("created_at", { ascending: false })
     .limit(50)
 
+  const promotionModel = (prisma as unknown as {
+    channelPromotionRequest?: {
+      findMany: (args: {
+        where: { status: "PENDING" }
+        orderBy: { createdAt: "asc" }
+        take: number
+        include: {
+          channel: { select: { id: true; name: true } }
+          requester: { select: { id: true; username: true } }
+        }
+      }) => Promise<
+        Array<{
+          id: string
+          channelId: string
+          requesterId: string
+          packageKey: string
+          packageDays: number
+          cost: number
+          createdAt: Date
+          channel: { id: string; name: string }
+          requester: { id: string; username: string | null }
+        }>
+      >
+    }
+  }).channelPromotionRequest
+
+  const promotionRequests = promotionModel
+    ? await promotionModel.findMany({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "asc" },
+        take: 100,
+        include: {
+          channel: { select: { id: true, name: true } },
+          requester: { select: { id: true, username: true } },
+        },
+      })
+    : []
+
   return (
     <DashboardShell>
       <AdminContent
@@ -58,6 +97,17 @@ export default async function AdminPage() {
         unverifiedChannels={unverifiedChannels || []}
         unverifiedBots={unverifiedBots || []}
         bans={bans || []}
+        promotionRequests={promotionRequests.map((request) => ({
+          id: request.id,
+          channel_id: request.channelId,
+          channel_name: request.channel.name,
+          requester_id: request.requesterId,
+          requester_username: request.requester.username || "unknown",
+          package_key: request.packageKey,
+          package_days: request.packageDays,
+          cost: request.cost,
+          created_at: request.createdAt.toISOString(),
+        }))}
         userId={user.id}
       />
     </DashboardShell>

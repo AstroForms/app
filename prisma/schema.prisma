@@ -134,6 +134,8 @@ model Profile {
   blockedByUsers      BlockedUser[] @relation("Blocked")
   botVerificationRequests BotVerificationRequest[]
   botChannelInvitesSent BotChannelInvite[]
+  channelPromotionRequests ChannelPromotionRequest[] @relation("PromotionRequester")
+  reviewedChannelPromotionRequests ChannelPromotionRequest[] @relation("PromotionReviewer")
 
   @@map("profiles")
 }
@@ -204,6 +206,7 @@ model Channel {
   isVerified  Boolean  @default(false) @map("is_verified")
   isPublic    Boolean  @default(true) @map("is_public")
   memberCount Int      @default(0) @map("member_count")
+  boostedUntil DateTime? @map("boosted_until")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -214,8 +217,40 @@ model Channel {
   botInvites  BotChannelInvite[]
   botChannelRules BotChannelRule[]
   botExecutionLogs BotExecutionLog[]
+  promotionRequests ChannelPromotionRequest[]
 
+  @@index([boostedUntil])
   @@map("channels")
+}
+
+model ChannelPromotionRequest {
+  id              String                 @id @default(cuid())
+  channelId       String                 @map("channel_id")
+  requesterId     String                 @map("requester_id")
+  packageKey      String                 @map("package_key")
+  packageDays     Int                    @map("package_days")
+  cost            Int
+  status          PromotionRequestStatus @default(PENDING)
+  reviewedBy      String?                @map("reviewed_by")
+  reviewedAt      DateTime?              @map("reviewed_at")
+  rejectionReason String?                @map("rejection_reason")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  requester Profile  @relation("PromotionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  reviewer  Profile? @relation("PromotionReviewer", fields: [reviewedBy], references: [id])
+
+  @@index([channelId, status])
+  @@index([requesterId, status])
+  @@index([status, createdAt])
+  @@map("channel_promotion_requests")
+}
+
+enum PromotionRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model ChannelMember {

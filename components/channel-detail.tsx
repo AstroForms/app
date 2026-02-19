@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { HashtagInput } from "@/components/hashtag-input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ImageCropper } from "@/components/image-cropper"
-import { Hash, BadgeCheck, Users, Flag, UserPlus, UserMinus, Send, Zap, Trash2, Camera, ImagePlus, Settings, Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Repeat2, Link as LinkIcon, X, ExternalLink, Smile, Film, Search } from "lucide-react"
+import { Hash, BadgeCheck, Users, Flag, UserPlus, UserMinus, Send, Zap, Trash2, Camera, ImagePlus, Settings, Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Repeat2, Link as LinkIcon, X, ExternalLink, Smile, Film, Search, Megaphone } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +65,8 @@ interface ChannelDetailProps {
     member_count: number
     icon_url: string | null
     banner_url: string | null
+    boosted_until?: string | null
+    has_pending_promotion_request?: boolean
   }
   posts: Array<{
     id: string
@@ -104,6 +106,12 @@ interface PostComment {
     display_name: string
   }
 }
+
+const channelBoostPackages = [
+  { key: "day", label: "1 Tag", cost: 300 },
+  { key: "week", label: "7 Tage", cost: 1000 },
+  { key: "month", label: "30 Tage", cost: 3500 },
+] as const
 
 function PostItem({
   post,
@@ -625,13 +633,6 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [channelName, setChannelName] = useState(channel.name)
-  const [channelDescription, setChannelDescription] = useState(channel.description || "")
-  const [channelIsPublic, setChannelIsPublic] = useState(Boolean(channel.is_public ?? true))
-  const [settingsName, setSettingsName] = useState(channel.name)
-  const [settingsDescription, setSettingsDescription] = useState(channel.description || "")
-  const [settingsIsPublic, setSettingsIsPublic] = useState(Boolean(channel.is_public ?? true))
-  const [isSavingSettings, setIsSavingSettings] = useState(false)
   
   // Post media states
   const [postImageUrl, setPostImageUrl] = useState("")
@@ -659,6 +660,16 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const isOwner = channel.owner_id === userId
   const isMod = membership?.role === "moderator" || membership?.role === "owner" || membership?.role === "admin"
   const remainingPostChars = MAX_POST_LENGTH - newPost.length
+  const isBoostActive = boostedUntil ? new Date(boostedUntil).getTime() > Date.now() : false
+  const boostedUntilLabel = boostedUntil
+    ? new Date(boostedUntil).toLocaleString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null
   const displayMembers = members.some((member) => member.user_id === channel.owner_id)
     ? members
     : [
@@ -674,6 +685,39 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
         },
         ...members,
       ]
+
+  useEffect(() => {
+    setBoostedUntil(channel.boosted_until || null)
+  }, [channel.boosted_until])
+
+  useEffect(() => {
+    setHasPendingPromotionRequest(!!channel.has_pending_promotion_request)
+  }, [channel.has_pending_promotion_request])
+
+  useEffect(() => {
+    if (!isOwner) return
+    const supabase = createDbClient()
+    let isMounted = true
+
+    const loadXp = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("xp")
+        .eq("id", userId)
+        .single()
+
+      if (error || !isMounted) return
+      const row = data as { xp?: number } | null
+      if (row && typeof row.xp === "number") {
+        setProfileXp(row.xp)
+      }
+    }
+
+    loadXp()
+    return () => {
+      isMounted = false
+    }
+  }, [isOwner, userId])
 
   const uploadImage = async (blob: Blob, type: "icon" | "banner") => {
     const supabase = createDbClient()
@@ -826,6 +870,48 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
     await supabase.from("channel_members").delete().eq("channel_id", channel.id).eq("user_id", userId)
     toast.success("Verlassen!")
     router.refresh()
+  }
+
+  const handlePromoteChannel = async (
+    packageKey: "day" | "week" | "month",
+    packageLabel: string,
+  ) => {
+    setIsPromotingChannel(true)
+    const supabase = createDbClient()
+    const { data, error } = await supabase.rpc("promote_channel", {
+      p_user_id: userId,
+      p_channel_id: channel.id,
+      p_package: packageKey,
+    })
+
+    if (error) {
+      toast.error(error.message || "Werbung fehlgeschlagen")
+      setIsPromotingChannel(false)
+      return
+    }
+
+    const payload = data as {
+      xp?: number
+      boosted_until?: string | null
+      status?: string
+      request_id?: string
+    } | null
+    if (payload && typeof payload.xp === "number") {
+      setProfileXp(payload.xp)
+    }
+    if (payload && (typeof payload.boosted_until === "string" || payload.boosted_until === null)) {
+      setBoostedUntil(payload.boosted_until || null)
+    }
+
+    if (payload?.status === "PENDING") {
+      setHasPendingPromotionRequest(true)
+      toast.success(`Werbeanfrage fuer ${packageLabel} gesendet`)
+      setShowPromoteDialog(false)
+    } else {
+      toast.success(`Channel fuer ${packageLabel} beworben`)
+    }
+    router.refresh()
+    setIsPromotingChannel(false)
   }
 
   const handlePost = async () => {
@@ -1087,6 +1173,25 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
             </div>
             <div className="flex items-center gap-2">
               {isOwner && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowPromoteDialog(true)}
+                        className="bg-transparent text-foreground border-border/50"
+                      >
+                        <Megaphone className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Channel werben</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {isOwner && (
                 <Button variant="outline" size="icon" onClick={() => setShowSettings(!showSettings)} className="bg-transparent text-foreground border-border/50">
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -1109,42 +1214,10 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
 
           {/* Settings Panel for Owner */}
           {isOwner && showSettings && (
-            <div className="mt-4 pt-4 border-t border-border/30 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Klicke auf Icon oder Banner, um Bilder zu aendern (max. 5MB Icon, 10MB Banner).
+            <div className="mt-4 pt-4 border-t border-border/30">
+              <p className="text-sm text-muted-foreground mb-2">
+                Klicke auf das Icon oder Banner um es zu ändern (max. 5MB für Icon, 10MB für Banner)
               </p>
-              <div className="grid gap-2">
-                <Label htmlFor="channel-settings-name">Channel-Name</Label>
-                <Input
-                  id="channel-settings-name"
-                  value={settingsName}
-                  onChange={(e) => setSettingsName(e.target.value)}
-                  maxLength={80}
-                  className="bg-secondary/50 border-border/50"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="channel-settings-description">Beschreibung</Label>
-                <Textarea
-                  id="channel-settings-description"
-                  value={settingsDescription}
-                  onChange={(e) => setSettingsDescription(e.target.value)}
-                  maxLength={500}
-                  className="bg-secondary/50 border-border/50 min-h-[96px]"
-                />
-              </div>
-              <div className="flex items-center justify-between rounded-xl bg-secondary/30 p-3">
-                <div>
-                  <p className="text-sm text-foreground">Oeffentlich sichtbar</p>
-                  <p className="text-xs text-muted-foreground">Wenn deaktiviert, koennen nur Mitglieder den Channel sehen.</p>
-                </div>
-                <Switch checked={settingsIsPublic} onCheckedChange={setSettingsIsPublic} />
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={handleSaveChannelSettings} disabled={isSavingSettings} className="text-primary-foreground">
-                  {isSavingSettings ? "Speichern..." : "Einstellungen speichern"}
-                </Button>
-              </div>
             </div>
           )}
         </div>
@@ -1396,6 +1469,62 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
           </div>
         </div>
       </div>
+
+      <Dialog open={showPromoteDialog} onOpenChange={setShowPromoteDialog}>
+        <DialogContent className="glass border-border/50">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Channel werben</DialogTitle>
+            <DialogDescription>
+              Waehle ein Paket, um deinen Channel im Discover-Bereich weiter oben zu platzieren.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/20 px-3 py-2">
+              <span className="text-xs text-muted-foreground">Dein XP</span>
+              <span className="text-sm font-semibold text-foreground">{profileXp ?? "-"}</span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {channelBoostPackages.map((boostPackage) => {
+                const hasEnoughXp = profileXp === null || profileXp >= boostPackage.cost
+                return (
+                  <Button
+                    key={boostPackage.key}
+                    variant="outline"
+                    className="bg-transparent border-border/50 text-foreground h-auto py-2"
+                    disabled={isPromotingChannel || hasPendingPromotionRequest || !hasEnoughXp}
+                    onClick={() => handlePromoteChannel(boostPackage.key, boostPackage.label)}
+                  >
+                    <div className="text-left leading-tight">
+                      <p className="text-xs font-semibold">{boostPackage.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{boostPackage.cost} XP</p>
+                    </div>
+                  </Button>
+                )
+              })}
+            </div>
+            {boostedUntilLabel && (
+              <p className="text-xs text-muted-foreground">
+                {isBoostActive ? "Werbung aktiv bis: " : "Letzte Werbung lief bis: "}
+                <span className="text-foreground">{boostedUntilLabel}</span>
+              </p>
+            )}
+            {hasPendingPromotionRequest && (
+              <p className="text-xs text-amber-400">
+                Offene Werbeanfrage wartet auf Admin/Owner-Freigabe.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowPromoteDialog(false)}
+              className="bg-transparent border-border/50"
+            >
+              Schliessen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Channel Report Dialog */}
       <Dialog open={showChannelReportDialog} onOpenChange={setShowChannelReportDialog}>

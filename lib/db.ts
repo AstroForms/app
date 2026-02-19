@@ -19,6 +19,7 @@ function createPrismaClient() {
     rawUrl && typeof rawUrl === "string"
       ? rawUrl
       : "mysql://astroforms:change_me@127.0.0.1:3306/astroforms"
+
   const parsed = new URL(databaseUrl)
   const configuredLimit = Number(process.env.DB_CONNECTION_LIMIT)
   const connectionLimit =
@@ -35,7 +36,7 @@ function createPrismaClient() {
     password: safeDecode(parsed.password),
     database: parsed.pathname.replace(/^\/+/, ""),
     allowPublicKeyRetrieval: true,
-    connectionLimit,
+    connectionLimit: 10,
     acquireTimeout: 15000,
     connectTimeout: 10000,
   })

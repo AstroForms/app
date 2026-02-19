@@ -38,6 +38,25 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
     .eq("channel_id", id)
     .limit(20)
 
+  const promotionModel = (prisma as unknown as {
+    channelPromotionRequest?: {
+      findFirst: (args: {
+        where: { channelId: string; status: "PENDING" }
+        select: { id: true }
+      }) => Promise<{ id: string } | null>
+    }
+  }).channelPromotionRequest
+
+  const pendingPromotionRequest = promotionModel
+    ? await promotionModel.findFirst({
+        where: {
+          channelId: id,
+          status: "PENDING",
+        },
+        select: { id: true },
+      })
+    : null
+
   const botInvites = await prisma.botChannelInvite.findMany({
     where: { channelId: id, status: "ACCEPTED" },
     include: { bot: { select: { id: true, name: true, avatarUrl: true } } },
@@ -61,7 +80,21 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
   return (
     <DashboardShell>
       <ChannelDetail
-        channel={channel}
+        channel={{
+          ...(channel as Record<string, unknown>),
+          has_pending_promotion_request: !!pendingPromotionRequest,
+        } as {
+          id: string
+          name: string
+          description: string | null
+          owner_id: string
+          is_verified: boolean
+          member_count: number
+          icon_url: string | null
+          banner_url: string | null
+          boosted_until?: string | null
+          has_pending_promotion_request?: boolean
+        }}
         posts={posts || []}
         members={[...(members || []), ...botMembers]}
         membership={membership}

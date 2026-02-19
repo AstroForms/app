@@ -3,7 +3,7 @@
 import { createDbClient } from "@/lib/db-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Hash, BadgeCheck, Users, Search, UserPlus, Check } from "lucide-react"
+import { Hash, BadgeCheck, Users, Search, UserPlus, Check, Zap } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useState } from "react"
@@ -19,6 +19,8 @@ interface Channel {
   is_verified: boolean
   owner_id: string
   icon_url?: string | null
+  boosted_until?: string | null
+  is_boosted?: boolean
 }
 
 export function DiscoverContent({
@@ -96,6 +98,11 @@ export function DiscoverContent({
                       <Link href={`/channels/${channel.id}`} className="font-semibold text-foreground hover:underline truncate">
                         {channel.name}
                       </Link>
+                      {channel.is_boosted && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                          <Zap className="h-3 w-3" /> Werbung
+                        </span>
+                      )}
                       {channel.is_verified && (
                         <TooltipProvider>
                           <Tooltip>
