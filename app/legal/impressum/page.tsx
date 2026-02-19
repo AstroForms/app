@@ -19,7 +19,7 @@ export default function ImpressumPage() {
             <span className="font-bold text-foreground">AstroForms</span>
           </Link>
           <Button variant="ghost" asChild className="text-muted-foreground">
-            <Link href="/"><ArrowLeft className="h-4 w-4 mr-2" /> Zurueck</Link>
+            <Link href="/"><ArrowLeft className="h-4 w-4 mr-2" /> Zurück</Link>
           </Button>
         </div>
       </header>
@@ -59,7 +59,7 @@ export default function ImpressumPage() {
           </section>
 
           <section className="glass rounded-2xl p-8 mb-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Haftung f+r Inhalte</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Haftung für Inhalte</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Als Diensteanbieter sind wir gemäss den allgemeinen Gesetzen für eigene Inhalte auf diesen Seiten
               verantwortlich. Wir sind jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde
@@ -72,7 +72,7 @@ export default function ImpressumPage() {
             <h2 className="text-xl font-semibold text-foreground mb-4">Haftung für Links</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Unser Angebot enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss
-              haben. Deshalb koennen wir fuer diese fremden Inhalte auch keine Gewähr uebernehmen. Fuer die Inhalte
+              haben. Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen. Für die Inhalte
               der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich.
             </p>
           </section>
