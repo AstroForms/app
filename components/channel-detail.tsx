@@ -26,6 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -58,6 +59,7 @@ interface ChannelDetailProps {
     id: string
     name: string
     description: string | null
+    is_public?: boolean
     owner_id: string
     is_verified: boolean
     member_count: number
@@ -623,6 +625,13 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [channelName, setChannelName] = useState(channel.name)
+  const [channelDescription, setChannelDescription] = useState(channel.description || "")
+  const [channelIsPublic, setChannelIsPublic] = useState(Boolean(channel.is_public ?? true))
+  const [settingsName, setSettingsName] = useState(channel.name)
+  const [settingsDescription, setSettingsDescription] = useState(channel.description || "")
+  const [settingsIsPublic, setSettingsIsPublic] = useState(Boolean(channel.is_public ?? true))
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
   
   // Post media states
   const [postImageUrl, setPostImageUrl] = useState("")
@@ -750,6 +759,51 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
     setCropperOpen(false)
     URL.revokeObjectURL(cropperImageSrc)
     setCropperImageSrc("")
+  }
+
+  const handleSaveChannelSettings = async () => {
+    if (!isOwner) return
+
+    const nextName = settingsName.trim()
+    const nextDescription = settingsDescription.trim()
+
+    if (!nextName) {
+      toast.error("Channel-Name darf nicht leer sein")
+      return
+    }
+    if (nextName.length > 80) {
+      toast.error("Channel-Name darf maximal 80 Zeichen haben")
+      return
+    }
+    if (nextDescription.length > 500) {
+      toast.error("Beschreibung darf maximal 500 Zeichen haben")
+      return
+    }
+
+    setIsSavingSettings(true)
+    const supabase = createDbClient()
+    const { error } = await supabase
+      .from("channels")
+      .update({
+        name: nextName,
+        description: nextDescription || null,
+        is_public: settingsIsPublic,
+      })
+      .eq("id", channel.id)
+      .eq("owner_id", userId)
+
+    if (error) {
+      toast.error(`Einstellungen konnten nicht gespeichert werden: ${error.message}`)
+      setIsSavingSettings(false)
+      return
+    }
+
+    setChannelName(nextName)
+    setChannelDescription(nextDescription)
+    setChannelIsPublic(settingsIsPublic)
+    toast.success("Channeleinstellungen gespeichert")
+    setIsSavingSettings(false)
+    router.refresh()
   }
 
   const handleJoin = async () => {
@@ -1006,7 +1060,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-foreground">{channel.name}</h1>
+                  <h1 className="text-2xl font-bold text-foreground">{channelName}</h1>
                   {channel.is_verified && (
                     <TooltipProvider>
                       <Tooltip>
@@ -1022,11 +1076,12 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
                     </TooltipProvider>
                   )}
                 </div>
-                {channel.description && (
-                  <p className="text-sm text-muted-foreground mt-1 max-w-xl">{channel.description}</p>
+                {channelDescription && (
+                  <p className="text-sm text-muted-foreground mt-1 max-w-xl">{channelDescription}</p>
                 )}
                 <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {members.length} Mitglieder</span>
+                  <span>{channelIsPublic ? "Oeffentlich" : "Privat"}</span>
                 </div>
               </div>
             </div>
@@ -1054,10 +1109,42 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
 
           {/* Settings Panel for Owner */}
           {isOwner && showSettings && (
-            <div className="mt-4 pt-4 border-t border-border/30">
-              <p className="text-sm text-muted-foreground mb-2">
-                Klicke auf das Icon oder Banner um es zu ändern (max. 5MB für Icon, 10MB für Banner)
+            <div className="mt-4 pt-4 border-t border-border/30 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Klicke auf Icon oder Banner, um Bilder zu aendern (max. 5MB Icon, 10MB Banner).
               </p>
+              <div className="grid gap-2">
+                <Label htmlFor="channel-settings-name">Channel-Name</Label>
+                <Input
+                  id="channel-settings-name"
+                  value={settingsName}
+                  onChange={(e) => setSettingsName(e.target.value)}
+                  maxLength={80}
+                  className="bg-secondary/50 border-border/50"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="channel-settings-description">Beschreibung</Label>
+                <Textarea
+                  id="channel-settings-description"
+                  value={settingsDescription}
+                  onChange={(e) => setSettingsDescription(e.target.value)}
+                  maxLength={500}
+                  className="bg-secondary/50 border-border/50 min-h-[96px]"
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-xl bg-secondary/30 p-3">
+                <div>
+                  <p className="text-sm text-foreground">Oeffentlich sichtbar</p>
+                  <p className="text-xs text-muted-foreground">Wenn deaktiviert, koennen nur Mitglieder den Channel sehen.</p>
+                </div>
+                <Switch checked={settingsIsPublic} onCheckedChange={setSettingsIsPublic} />
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={handleSaveChannelSettings} disabled={isSavingSettings} className="text-primary-foreground">
+                  {isSavingSettings ? "Speichern..." : "Einstellungen speichern"}
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -1361,3 +1448,4 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
     </div>
   )
 }
+
