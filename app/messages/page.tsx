@@ -2,6 +2,8 @@ import { createDbServer } from "@/lib/db-server"
 import { redirect } from "next/navigation"
 import { MessagesContent } from "@/components/messages-content"
 import { DashboardShell } from "@/components/dashboard-shell"
+import { FeatureDisabledNotice } from "@/components/feature-disabled-notice"
+import { isFeatureEnabled } from "@/lib/features"
 
 export default async function MessagesPage({ 
   searchParams 
@@ -15,6 +17,18 @@ export default async function MessagesPage({
   
   if (!user) {
     redirect("/auth/login")
+  }
+
+  const messagesEnabled = await isFeatureEnabled("messages")
+  if (!messagesEnabled) {
+    return (
+      <DashboardShell>
+        <FeatureDisabledNotice
+          title="Nachrichten sind deaktiviert"
+          description="Diese Funktion wurde von der Administration deaktiviert und kann aktuell nicht verwendet werden."
+        />
+      </DashboardShell>
+    )
   }
 
   return (

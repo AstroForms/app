@@ -535,7 +535,15 @@ export function ProfileContent({
     if (!isOwnProfile) checkBlocked()
   }, [currentUserId, profile.id, isOwnProfile])
 
-  const xpForNextLevel = profile.level * profile.level * 50
+  const derivedLevelFromXp = (() => {
+    let level = 1
+    while (profile.xp >= level * level * 50) {
+      level += 1
+    }
+    return level
+  })()
+  const effectiveLevel = Math.max(profile.level, derivedLevelFromXp)
+  const xpForNextLevel = effectiveLevel * effectiveLevel * 50
   const xpProgress = Math.min((profile.xp / Math.max(xpForNextLevel, 1)) * 100, 100)
 
   const handleFollow = async () => {
@@ -875,7 +883,7 @@ export function ProfileContent({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Star className="h-5 w-5 text-primary" />
-              <span className="font-semibold text-foreground">Level {profile.level}</span>
+              <span className="font-semibold text-foreground">Level {effectiveLevel}</span>
             </div>
             <span className="text-sm text-muted-foreground">{profile.xp} / {xpForNextLevel} XP</span>
           </div>
@@ -1059,4 +1067,3 @@ export function ProfileContent({
     </div>
   )
 }
-

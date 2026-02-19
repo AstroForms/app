@@ -11,6 +11,15 @@ function pickString(body: Record<string, unknown>, keys: string[]) {
   return ""
 }
 
+function getLevelFromXp(totalXp: number) {
+  const xp = Math.max(0, Math.floor(totalXp))
+  let level = 1
+  while (xp >= level * level * 50) {
+    level += 1
+  }
+  return level
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ name: string }> }) {
   const session = await auth()
   if (!session?.user?.id) {
@@ -26,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
     const profile = await prisma.profile.findUnique({ where: { id: userId } })
     if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 })
     const newXp = profile.xp + amount
-    const newLevel = 1 + Math.floor(newXp / 100)
+    const newLevel = getLevelFromXp(newXp)
     await prisma.profile.update({
       where: { id: userId },
       data: { xp: newXp, level: newLevel },

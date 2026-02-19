@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { isFeatureEnabled } from "@/lib/features"
 
 type ScheduleConfig = {
   schedule_type?: string
@@ -72,6 +73,11 @@ function formatContent(template: string, ctx: { user?: string; channel?: string;
 }
 
 export async function POST() {
+  const automationsEnabled = await isFeatureEnabled("automations")
+  if (!automationsEnabled) {
+    return NextResponse.json({ error: "Automations disabled" }, { status: 403 })
+  }
+
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
@@ -45,6 +45,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<{ username: string; avatar_url: string | null } | null>(null)
   const [searchVal, setSearchVal] = useState("")
+  const [searchProfiles, setSearchProfiles] = useState<
+    Array<{ id: string; username: string; display_name: string; avatar_url: string | null }>
+  >([])
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchBoxRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     fetch("/api/profile/me", { cache: "no-store" })
       .then((res) => (res?.ok ? res.json() : null))
@@ -64,6 +69,37 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     const interval = setInterval(runAutomations, 60000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!searchBoxRef.current) return
+      if (!searchBoxRef.current.contains(event.target as Node)) {
+        setSearchOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    const query = searchVal.trim()
+    if (query.length < 2) {
+      setSearchProfiles([])
+      return
+    }
+
+    const timer = setTimeout(() => {
+      fetch(`/api/profiles/search?q=${encodeURIComponent(query)}&limit=6`, { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : { profiles: [] }))
+        .then((data) => {
+          setSearchProfiles(Array.isArray(data?.profiles) ? data.profiles : [])
+          setSearchOpen(true)
+        })
+        .catch(() => setSearchProfiles([]))
+    }, 220)
+
+    return () => clearTimeout(timer)
+  }, [searchVal])
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/" })
@@ -159,15 +195,49 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="max-w-lg w-full justify-self-center">
-              <div className="relative">
+              <div className="relative" ref={searchBoxRef}>
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Suchen..."
                   value={searchVal}
-                  onChange={(e) => setSearchVal(e.target.value)}
+                  onChange={(e) => {
+                    setSearchVal(e.target.value)
+                    setSearchOpen(true)
+                  }}
                   className="h-8 pl-8 pr-8 bg-secondary/40 border-border/30 text-xs rounded-lg placeholder:text-muted-foreground/60"
                 />
                 <Mic className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                {searchOpen && searchVal.trim().length >= 2 && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+0.4rem)] z-50 rounded-lg border border-border/50 bg-card shadow-lg overflow-hidden">
+                    {searchProfiles.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-muted-foreground">Keine Profile gefunden</p>
+                    ) : (
+                      <div className="py-1">
+                        {searchProfiles.map((profile) => (
+                          <Link
+                            key={profile.id}
+                            href={`/profile/${profile.id}`}
+                            className="flex items-center gap-2 px-3 py-2 hover:bg-secondary/40"
+                            onClick={() => setSearchOpen(false)}
+                          >
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={profile.avatar_url || undefined} />
+                              <AvatarFallback className="text-[10px]">
+                                {profile.username?.charAt(0).toUpperCase() || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-foreground truncate">@{profile.username}</p>
+                              {profile.display_name && (
+                                <p className="text-[11px] text-muted-foreground truncate">{profile.display_name}</p>
+                              )}
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

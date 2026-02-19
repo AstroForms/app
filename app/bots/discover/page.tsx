@@ -1,13 +1,27 @@
 import { redirect } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { BotsDiscoverContent } from "@/components/bots-discover-content"
+import { FeatureDisabledNotice } from "@/components/feature-disabled-notice"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { isFeatureEnabled } from "@/lib/features"
 
 export default async function BotsDiscoverPage() {
   const session = await auth()
   if (!session?.user?.id) redirect("/auth/login")
   const userId = session.user.id
+  const botsEnabled = await isFeatureEnabled("bots")
+
+  if (!botsEnabled) {
+    return (
+      <DashboardShell>
+        <FeatureDisabledNotice
+          title="Bots sind deaktiviert"
+          description="Diese Funktion wurde von der Administration deaktiviert und kann aktuell nicht verwendet werden."
+        />
+      </DashboardShell>
+    )
+  }
 
   const bots = await prisma.bot.findMany({
     where: { isPublic: true },

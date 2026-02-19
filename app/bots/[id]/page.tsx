@@ -1,14 +1,28 @@
 import { redirect, notFound } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { BotProfileContent } from "@/components/bot-profile-content"
+import { FeatureDisabledNotice } from "@/components/feature-disabled-notice"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { isFeatureEnabled } from "@/lib/features"
 
 export default async function BotProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await auth()
   if (!session?.user?.id) redirect("/auth/login")
   const userId = session.user.id
+  const botsEnabled = await isFeatureEnabled("bots")
+
+  if (!botsEnabled) {
+    return (
+      <DashboardShell>
+        <FeatureDisabledNotice
+          title="Bots sind deaktiviert"
+          description="Diese Funktion wurde von der Administration deaktiviert und kann aktuell nicht verwendet werden."
+        />
+      </DashboardShell>
+    )
+  }
 
   const bot = await prisma.bot.findUnique({
     where: { id },

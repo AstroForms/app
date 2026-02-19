@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 
 interface Report {
   id: string
@@ -59,6 +60,12 @@ interface BanRecord {
   profiles: { username: string }
 }
 
+type FeatureFlags = {
+  bots: boolean
+  messages: boolean
+  automations: boolean
+}
+
 export function AdminContent({
   reports,
   unverifiedChannels,
@@ -94,6 +101,13 @@ export function AdminContent({
   const [userSearchResults, setUserSearchResults] = useState<User[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [userFilter, setUserFilter] = useState("")
+  const [features, setFeatures] = useState<FeatureFlags>({
+    bots: true,
+    messages: true,
+    automations: true,
+  })
+  const [featuresLoading, setFeaturesLoading] = useState(false)
+  const [featuresSaving, setFeaturesSaving] = useState<null | keyof FeatureFlags>(null)
 
   const verifyChannel = async (channelId: string) => {
     const supabase = createDbClient()
@@ -153,6 +167,62 @@ export function AdminContent({
   useEffect(() => {
     void loadUsers()
   }, [])
+
+  const loadFeatures = async () => {
+    setFeaturesLoading(true)
+    try {
+      const res = await fetch("/api/admin/features", { cache: "no-store" })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(data?.error || "Fehler beim Laden der Funktionen")
+      }
+      if (data?.features) {
+        setFeatures({
+          bots: Boolean(data.features.bots),
+          messages: Boolean(data.features.messages),
+          automations: Boolean(data.features.automations),
+        })
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Laden der Funktionen")
+    } finally {
+      setFeaturesLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadFeatures()
+  }, [])
+
+  const toggleFeature = async (feature: keyof FeatureFlags, enabled: boolean) => {
+    const previous = features
+    setFeatures((current) => ({ ...current, [feature]: enabled }))
+    setFeaturesSaving(feature)
+    try {
+      const res = await fetch("/api/admin/features", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feature, enabled }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(data?.error || "Speichern fehlgeschlagen")
+      }
+      if (data?.features) {
+        setFeatures({
+          bots: Boolean(data.features.bots),
+          messages: Boolean(data.features.messages),
+          automations: Boolean(data.features.automations),
+        })
+      }
+      toast.success(`Funktion ${enabled ? "aktiviert" : "deaktiviert"}`)
+    } catch (error) {
+      setFeatures(previous)
+      toast.error(error instanceof Error ? error.message : "Speichern fehlgeschlagen")
+    } finally {
+      setFeaturesSaving(null)
+    }
+  }
 
   const grantAdmin = async (profileId: string) => {
     if (!profileId.trim()) return
@@ -528,6 +598,7 @@ export function AdminContent({
           <TabsTrigger value="verify">Verifizierung</TabsTrigger>
           <TabsTrigger value="users">Nutzer</TabsTrigger>
           <TabsTrigger value="bans">Bans</TabsTrigger>
+          <TabsTrigger value="features">Funktionen</TabsTrigger>
         </TabsList>
 
         <TabsContent value="reports">
@@ -784,8 +855,55 @@ export function AdminContent({
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="features">
+          <div className="glass rounded-xl p-6">
+            <h3 className="font-semibold text-foreground mb-2">Funktionen</h3>
+            <p className="text-sm text-muted-foreground mb-5">
+              Hier kannst du zentrale App-Bereiche global aktivieren oder deaktivieren.
+            </p>
+            {featuresLoading ? (
+              <p className="text-sm text-muted-foreground">Funktionen werden geladen...</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/20 p-4">
+                  <div>
+                    <p className="font-medium text-foreground">Bots</p>
+                    <p className="text-xs text-muted-foreground">Steuert alle Bot-Seiten und Bot-Verwendung.</p>
+                  </div>
+                  <Switch
+                    checked={features.bots}
+                    disabled={featuresSaving !== null}
+                    onCheckedChange={(checked) => toggleFeature("bots", checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/20 p-4">
+                  <div>
+                    <p className="font-medium text-foreground">Nachrichten</p>
+                    <p className="text-xs text-muted-foreground">Steuert die Direktnachrichten-Funktion.</p>
+                  </div>
+                  <Switch
+                    checked={features.messages}
+                    disabled={featuresSaving !== null}
+                    onCheckedChange={(checked) => toggleFeature("messages", checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/20 p-4">
+                  <div>
+                    <p className="font-medium text-foreground">Automatisierung</p>
+                    <p className="text-xs text-muted-foreground">Steuert die Ausfuehrung und Verwaltung von Automationen.</p>
+                  </div>
+                  <Switch
+                    checked={features.automations}
+                    disabled={featuresSaving !== null}
+                    onCheckedChange={(checked) => toggleFeature("automations", checked)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   )
 }
-

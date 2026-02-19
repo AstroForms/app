@@ -353,6 +353,7 @@ export function BotsContent({
   userId,
   activeRules,
   pendingInvites,
+  automationsEnabled,
 }: {
   bots: BotType[]
   automations: AutomationType[]
@@ -360,6 +361,7 @@ export function BotsContent({
   userId: string
   activeRules: BotActiveRule[]
   pendingInvites: BotChannelInvite[]
+  automationsEnabled: boolean
 }) {
   const [showCreateBot, setShowCreateBot] = useState(false)
   const [showInviteDialog, setShowInviteDialog] = useState(false)
@@ -636,6 +638,10 @@ export function BotsContent({
   }
 
   const handleCreateAutomation = async () => {
+    if (!automationsEnabled) {
+      toast.error("Automatisierungen sind aktuell deaktiviert.")
+      return
+    }
     if (!autoName.trim() || !triggerType || !actionType) return
     if (!selectedBot) {
       toast.error("Bitte einen Bot auswählen.")
@@ -687,6 +693,10 @@ export function BotsContent({
   }
 
   const toggleAutomation = async (auto: AutomationType) => {
+    if (!automationsEnabled) {
+      toast.error("Automatisierungen sind aktuell deaktiviert.")
+      return
+    }
     const supabase = createDbClient()
     await supabase.from("automations").update({ is_active: !auto.is_active }).eq("id", auto.id)
     toast.success(auto.is_active ? "Automation deaktiviert" : "Automation aktiviert")
@@ -943,10 +953,16 @@ export function BotsContent({
         </TabsContent>
 
         <TabsContent value="automations">
+          {!automationsEnabled && (
+            <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-300">
+              Diese Funktion wurde von der Administration deaktiviert. Automatisierungen koennen derzeit nicht verwendet werden.
+            </div>
+          )}
           <div className="flex justify-end mb-4">
             <Dialog
               open={showCreateAutomation}
               onOpenChange={(open) => {
+                if (open && !automationsEnabled) return
                 setShowCreateAutomation(open)
                 if (open && bots.length > 0) {
                   setSelectedBot((prev) => prev || bots[0].id)
@@ -955,7 +971,9 @@ export function BotsContent({
               }}
             >
               <DialogTrigger asChild>
-                <Button className="text-primary-foreground"><Plus className="h-4 w-4 mr-2" /> Automation erstellen</Button>
+                <Button className="text-primary-foreground" disabled={!automationsEnabled}>
+                  <Plus className="h-4 w-4 mr-2" /> Automation erstellen
+                </Button>
               </DialogTrigger>
               <DialogContent className="glass border-border/50 max-w-2xl max-h-[85vh] flex flex-col">
                 <DialogHeader>
@@ -1238,6 +1256,7 @@ export function BotsContent({
                   <Button
                     onClick={handleCreateAutomation}
                     disabled={
+                      !automationsEnabled ||
                       isLoading ||
                       !autoName.trim() ||
                       !triggerType ||
@@ -1323,7 +1342,11 @@ export function BotsContent({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Switch checked={auto.is_active} onCheckedChange={() => toggleAutomation(auto)} />
+                        <Switch
+                          checked={auto.is_active}
+                          onCheckedChange={() => toggleAutomation(auto)}
+                          disabled={!automationsEnabled}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1419,4 +1442,3 @@ export function BotsContent({
     </div>
   )
 }
-
