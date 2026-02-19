@@ -11,6 +11,9 @@ function createPrismaClient() {
     rawUrl && typeof rawUrl === "string"
       ? rawUrl
       : "mysql://astroforms:change_me@127.0.0.1:3306/astroforms"
+  const connectionLimit = Number(process.env.DB_CONNECTION_LIMIT || "2")
+  const acquireTimeout = Number(process.env.DB_ACQUIRE_TIMEOUT_MS || "15000")
+  const connectTimeout = Number(process.env.DB_CONNECT_TIMEOUT_MS || "10000")
 
   const parsed = new URL(databaseUrl)
   const adapter = new PrismaMariaDb({
@@ -20,9 +23,9 @@ function createPrismaClient() {
     password: decodeURIComponent(parsed.password),
     database: parsed.pathname.replace(/^\/+/, ""),
     allowPublicKeyRetrieval: true,
-    connectionLimit: 10,
-    acquireTimeout: 15000,
-    connectTimeout: 10000,
+    connectionLimit: Number.isFinite(connectionLimit) && connectionLimit > 0 ? connectionLimit : 2,
+    acquireTimeout: Number.isFinite(acquireTimeout) && acquireTimeout > 0 ? acquireTimeout : 15000,
+    connectTimeout: Number.isFinite(connectTimeout) && connectTimeout > 0 ? connectTimeout : 10000,
   })
   return new PrismaClient({ adapter })
 }

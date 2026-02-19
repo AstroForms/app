@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import {
   Shield, BadgeCheck, Flag, Ban, Hash, Bot,
-  CheckCircle, XCircle, Trash2, AlertTriangle, Lock, User, Clock, Eye, ScrollText, BarChart3
+  CheckCircle, XCircle, Trash2, AlertTriangle, Lock, User, Clock, Eye, ScrollText, BarChart3, Megaphone
 } from "lucide-react"
 import { useEffect, useState } from "react"
 // ...existing code...
@@ -62,6 +62,18 @@ interface BanRecord {
   profiles: { username: string }
 }
 
+interface PromotionRequest {
+  id: string
+  channel_id: string
+  channel_name: string
+  requester_id: string
+  requester_username: string
+  package_key: string
+  package_days: number
+  cost: number
+  created_at: string
+}
+
 type FeatureFlags = {
   bots: boolean
   messages: boolean
@@ -81,12 +93,14 @@ export function AdminContent({
   unverifiedChannels,
   unverifiedBots,
   bans,
+  promotionRequests,
   userId,
 }: {
   reports: Report[]
   unverifiedChannels: UnverifiedChannel[]
   unverifiedBots: UnverifiedBot[]
   bans: BanRecord[]
+  promotionRequests: PromotionRequest[]
   userId: string
 }) {
   const router = useRouter()
@@ -121,6 +135,7 @@ export function AdminContent({
   const [reportStatusFilter, setReportStatusFilter] = useState<"pending" | "resolved" | "dismissed" | "all">("pending")
   const [kpis, setKpis] = useState<TrustSafetyKpis | null>(null)
   const [kpisLoading, setKpisLoading] = useState(false)
+  const [promotionActionId, setPromotionActionId] = useState<string | null>(null)
 
   const verifyChannel = async (channelId: string) => {
     const supabase = createDbClient()
@@ -437,6 +452,34 @@ export function AdminContent({
     }
   }
 
+  const formatPackageLabel = (request: PromotionRequest) => {
+    if (request.package_key === "day") return "1 Tag"
+    if (request.package_key === "week") return "7 Tage"
+    if (request.package_key === "month") return "30 Tage"
+    return `${request.package_days} Tage`
+  }
+
+  const handlePromotionRequestAction = async (requestId: string, action: "approve" | "reject") => {
+    setPromotionActionId(requestId)
+    try {
+      const res = await fetch("/api/admin/promotion-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, action }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Aktion fehlgeschlagen")
+      }
+      toast.success(action === "approve" ? "Werbeanfrage angenommen" : "Werbeanfrage abgelehnt")
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Aktion fehlgeschlagen")
+    } finally {
+      setPromotionActionId(null)
+    }
+  }
+
   const filteredReports = reports.filter((report) => {
     if (reportStatusFilter === "all") return true
     return String(report.status || "").toLowerCase() === reportStatusFilter
@@ -570,7 +613,7 @@ export function AdminContent({
         <Shield className="h-6 w-6 text-primary" />
         <div>
           <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
-          <p className="text-muted-foreground text-sm">Verwalte Reports, Verifizierungen und Bans</p>
+          <p className="text-muted-foreground text-sm">Verwalte Reports, Verifizierungen, Werbeanfragen und Bans</p>
         </div>
         <div className="ml-auto">
           <Button variant="outline" asChild className="bg-transparent">
@@ -734,7 +777,7 @@ export function AdminContent({
         </TabsContent>
 
         <TabsContent value="verify">
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 xl:grid-cols-3">
             {/* Channels */}
             <div>
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -783,6 +826,57 @@ export function AdminContent({
                       </Button>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Promotion Requests */}
+            <div>
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Megaphone className="h-4 w-4 text-primary" /> Werbeanfragen
+              </h3>
+              {promotionRequests.length === 0 ? (
+                <div className="glass rounded-xl p-6 text-center">
+                  <p className="text-sm text-muted-foreground">Keine offenen Werbeanfragen</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {promotionRequests.map((request) => {
+                    const isActionLoading = promotionActionId === request.id
+                    return (
+                      <div key={request.id} className="glass rounded-xl p-4">
+                        <div className="mb-2">
+                          <p className="font-medium text-foreground text-sm">{request.channel_name}</p>
+                          <p className="text-xs text-muted-foreground">von @{request.requester_username}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            Paket: {formatPackageLabel(request)} - {request.cost} XP
+                          </p>
+                          <p className="text-[10px] text-muted-foreground/80 mt-1">
+                            Eingegangen: {new Date(request.created_at).toLocaleString("de-DE")}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            disabled={isActionLoading}
+                            onClick={() => handlePromotionRequestAction(request.id, "approve")}
+                            className="text-primary-foreground"
+                          >
+                            <CheckCircle className="h-3.5 w-3.5 mr-1" /> Annehmen
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isActionLoading}
+                            onClick={() => handlePromotionRequestAction(request.id, "reject")}
+                            className="bg-transparent"
+                          >
+                            <XCircle className="h-3.5 w-3.5 mr-1" /> Ablehnen
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>

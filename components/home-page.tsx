@@ -32,12 +32,18 @@ interface TrendingChannel {
   id: string
   name: string
   post_count: number
+  is_boosted?: boolean
 }
 
 interface JoinedChannel {
   id: string
   name: string
   is_verified: boolean
+}
+
+interface SponsoredChannel {
+  id: string
+  name: string
 }
 
 interface FeedPost {
@@ -94,11 +100,13 @@ export function HomePage({
   user,
   trendingChannels,
   joinedChannels,
+  sponsoredChannel,
   posts,
 }: {
   user: HomeUser | null
   trendingChannels: TrendingChannel[]
   joinedChannels: JoinedChannel[]
+  sponsoredChannel: SponsoredChannel | null
   posts: FeedPost[]
 }) {
   const [searchQuery, setSearchQuery] = useState("")
@@ -229,6 +237,11 @@ export function HomePage({
                 >
                   <span className="text-muted-foreground">#</span>
                   <span className="font-medium">{ch.name}</span>
+                  {ch.is_boosted && (
+                    <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                      Werbung
+                    </span>
+                  )}
                   <span className="text-[11px] ml-auto">{ch.post_count} Posts</span>
                 </a>
               ))}
@@ -335,7 +348,9 @@ export function HomePage({
                           )}>
                             {channel.name}
                           </p>
-                          <p className="text-[10px] text-muted-foreground/60">{channel.post_count} Posts</p>
+                          <p className="text-[10px] text-muted-foreground/60">
+                            {channel.post_count} Posts{channel.is_boosted ? " • Werbung" : ""}
+                          </p>
                         </div>
                         {i < 3 && <Flame className="h-3.5 w-3.5 text-orange-400 shrink-0" />}
                       </Link>
@@ -345,6 +360,34 @@ export function HomePage({
               </div>
             </aside>
           </div>
+
+          {sponsoredChannel && (
+            <section className="px-4 pb-4 mt-auto">
+              <div className="max-w-[900px] mx-auto">
+                <Link
+                  href={`/channels/${sponsoredChannel.id}`}
+                  className="group block rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 via-card/90 to-card/90 p-4 shadow-sm transition-colors hover:border-primary/45"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        Joine jetzt '{sponsoredChannel.name}'
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Entdecke den Channel und tritt direkt der Community bei.
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-primary/30 bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                      Werbung
+                    </span>
+                  </div>
+                  <p className="mt-3 text-[10px] text-muted-foreground/90 uppercase tracking-wide">
+                    Durch diese Werbung bevorzugt angezeigt.
+                  </p>
+                </Link>
+              </div>
+            </section>
+          )}
 
           {/* Footer */}
           <footer className="border-t border-border/40 bg-card/30 py-6 px-4 mt-auto">
@@ -362,6 +405,7 @@ export function HomePage({
           </footer>
         </div>
       </div>
+
     </div>
   )
 }

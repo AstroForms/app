@@ -3,6 +3,12 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { randomUUID } from "crypto"
 
+const PROMOTE_PACKAGES: Record<string, { cost: number; days: number }> = {
+  day: { cost: 300, days: 1 },
+  week: { cost: 1000, days: 7 },
+  month: { cost: 3500, days: 30 },
+}
+
 function pickString(body: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
     const value = body[key]
@@ -32,6 +38,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
   if (name === "add_xp") {
     const userId = body.p_user_id as string
     const amount = Number(body.p_amount || 0)
+    if (userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
     const profile = await prisma.profile.findUnique({ where: { id: userId } })
     if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 })
     const newXp = profile.xp + amount
@@ -41,6 +50,93 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
       data: { xp: newXp, level: newLevel },
     })
     return NextResponse.json({ data: { xp: newXp, level: newLevel } })
+  }
+
+  if (name === "promote_channel") {
+    const userId = pickString(body, ["p_user_id"])
+    const channelId = pickString(body, ["p_channel_id"])
+    const packageKey = pickString(body, ["p_package"]).toLowerCase()
+    const packageConfig = PROMOTE_PACKAGES[packageKey]
+
+    if (!userId || !channelId || !packageConfig) {
+      return NextResponse.json({ error: "Invalid promote request" }, { status: 400 })
+    }
+    if (userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const channel = await tx.channel.findUnique({
+          where: { id: channelId },
+          select: { ownerId: true, boostedUntil: true },
+        })
+        if (!channel) throw new Error("Channel not found")
+        if (channel.ownerId !== userId) throw new Error("Only owner can promote this channel")
+
+        const profile = await tx.profile.findUnique({
+          where: { id: userId },
+          select: { xp: true },
+        })
+        if (!profile) throw new Error("Profile not found")
+        if (profile.xp < packageConfig.cost) throw new Error("Not enough XP")
+
+        const promotionModel = (tx as unknown as {
+          channelPromotionRequest?: {
+            findFirst: (args: {
+              where: { channelId: string; status: "PENDING" }
+            }) => Promise<{ id: string } | null>
+            create: (args: {
+              data: {
+                channelId: string
+                requesterId: string
+                packageKey: string
+                packageDays: number
+                cost: number
+                status: "PENDING"
+              }
+            }) => Promise<{ id: string; status: string }>
+          }
+        }).channelPromotionRequest
+
+        if (!promotionModel) {
+          throw new Error("Promotion-Model nicht verfuegbar. Bitte Server neu starten.")
+        }
+
+        const existingPendingRequest = await promotionModel.findFirst({
+          where: {
+            channelId,
+            status: "PENDING",
+          },
+        })
+        if (existingPendingRequest) {
+          throw new Error("Es gibt bereits eine offene Werbeanfrage")
+        }
+
+        const request = await promotionModel.create({
+          data: {
+            channelId,
+            requesterId: userId,
+            packageKey,
+            packageDays: packageConfig.days,
+            cost: packageConfig.cost,
+            status: "PENDING",
+          },
+        })
+
+        return {
+          request_id: request.id,
+          status: request.status,
+          xp: profile.xp,
+          boosted_until: channel.boostedUntil ? channel.boostedUntil.toISOString() : null,
+        }
+      })
+
+      return NextResponse.json({ data: result })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Promote channel failed"
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
   }
 
   if (name === "search_hashtags") {

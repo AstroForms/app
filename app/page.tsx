@@ -15,35 +15,95 @@ export default async function Page() {
   const session = await auth()
   const userId = session?.user?.id || null
 
-  const userProfile = userId
-    ? await prisma.profile.findUnique({
-        where: { id: userId },
-        select: { id: true, username: true, displayName: true, avatarUrl: true },
+  const now = Date.now()
+  let userProfile: {
+    id: string
+    username: string | null
+    displayName: string | null
+    avatarUrl: string | null
+  } | null = null
+  let trendingChannels: Array<{
+    id: string
+    name: string
+    boostedUntil: Date | null
+    memberCount: number
+    createdAt: Date
+  }> = []
+  let joinedChannels: Array<{ channel: { id: string; name: string; isVerified: boolean } }> = []
+  let posts: any[] = []
+  let sponsoredChannel: { id: string; name: string } | null = null
+
+  try {
+    userProfile = userId
+      ? await prisma.profile.findUnique({
+          where: { id: userId },
+          select: { id: true, username: true, displayName: true, avatarUrl: true },
+        })
+      : null
+
+    const trendingCandidates = await prisma.channel.findMany({
+      where: { isPublic: true },
+      take: 100,
+      select: {
+        id: true,
+        name: true,
+        boostedUntil: true,
+        memberCount: true,
+        createdAt: true,
+      },
+    })
+
+    trendingChannels = trendingCandidates
+      .sort((a, b) => {
+        const aBoosted = !!a.boostedUntil && a.boostedUntil.getTime() > now
+        const bBoosted = !!b.boostedUntil && b.boostedUntil.getTime() > now
+        if (aBoosted !== bBoosted) return aBoosted ? -1 : 1
+
+        if (aBoosted && bBoosted) {
+          const aBoostTime = a.boostedUntil?.getTime() || 0
+          const bBoostTime = b.boostedUntil?.getTime() || 0
+          if (aBoostTime !== bBoostTime) return bBoostTime - aBoostTime
+        }
+
+        if (a.memberCount !== b.memberCount) {
+          return b.memberCount - a.memberCount
+        }
+
+        return b.createdAt.getTime() - a.createdAt.getTime()
       })
-    : null
+      .slice(0, 5)
 
-  const trendingChannels = await prisma.channel.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 5,
-    select: { id: true, name: true },
-  })
+    const activeBoostedChannels = trendingCandidates.filter(
+      (channel) => !!channel.boostedUntil && channel.boostedUntil.getTime() > now,
+    )
+    const activeBoostedChannel =
+      activeBoostedChannels.length > 0
+        ? activeBoostedChannels[Math.floor(Math.random() * activeBoostedChannels.length)]
+        : null
 
-  const joinedChannels = userId
-    ? await prisma.channelMember.findMany({
-        where: { userId },
-        include: { channel: true },
-      })
-    : []
+    sponsoredChannel = activeBoostedChannel
+      ? { id: activeBoostedChannel.id, name: activeBoostedChannel.name }
+      : null
 
-  const posts = await prisma.post.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 20,
-    include: {
-      user: { select: { id: true, username: true, avatarUrl: true, displayName: true } },
-      channel: { select: { id: true, name: true, isVerified: true } },
-      parentPost: { include: { user: { select: { username: true } } } },
-    },
-  })
+    joinedChannels = userId
+      ? await prisma.channelMember.findMany({
+          where: { userId },
+          include: { channel: true },
+        })
+      : []
+
+    posts = await prisma.post.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      include: {
+        user: { select: { id: true, username: true, avatarUrl: true, displayName: true } },
+        channel: { select: { id: true, name: true, isVerified: true } },
+        parentPost: { include: { user: { select: { username: true } } } },
+      },
+    })
+  } catch (error) {
+    console.error("Home page database query failed:", error)
+  }
 
   return (
     <HomePage
@@ -57,12 +117,18 @@ export default async function Page() {
             }
           : null
       }
-      trendingChannels={trendingChannels.map((ch) => ({ id: ch.id, name: ch.name, post_count: 0 }))}
+      trendingChannels={trendingChannels.map((ch) => ({
+        id: ch.id,
+        name: ch.name,
+        post_count: 0,
+        is_boosted: !!ch.boostedUntil && ch.boostedUntil.getTime() > now,
+      }))}
       joinedChannels={joinedChannels.map((member) => ({
         id: member.channel.id,
         name: member.channel.name,
         is_verified: member.channel.isVerified,
       }))}
+      sponsoredChannel={sponsoredChannel}
       posts={posts.map((post) => ({
         id: post.id,
         content: post.content,
