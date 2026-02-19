@@ -5,11 +5,11 @@ import QRCode from "qrcode"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import {
-  TWO_FACTOR_COOKIE_NAME,
   buildOtpAuthUrl,
   generateTwoFactorSecret,
   verifyTotpToken,
 } from "@/lib/two-factor"
+import { TWO_FACTOR_COOKIE_NAME } from "@/lib/two-factor-constants"
 
 export async function GET() {
   const session = await auth()

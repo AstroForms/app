@@ -1,8 +1,8 @@
 import { createHmac, timingSafeEqual } from "crypto"
 import { generateSecret, generateURI, verifySync } from "otplib"
+import { TWO_FACTOR_COOKIE_NAME } from "@/lib/two-factor-constants"
 
 const DEFAULT_2FA_WINDOW_MS = 1000 * 60 * 60 * 8
-export const TWO_FACTOR_COOKIE_NAME = "af_2fa_ok"
 
 function normalizeSecret(value?: string) {
   if (!value) return ""

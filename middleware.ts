@@ -2,7 +2,7 @@ export const runtime = "nodejs" // Required for NextAuth and crypto
 import { auth } from "@/lib/auth"
 import { NextResponse, type NextRequest } from "next/server"
 import { isUserCurrentlyBanned } from "@/lib/bans"
-import { TWO_FACTOR_COOKIE_NAME } from "@/lib/two-factor"
+import { TWO_FACTOR_COOKIE_NAME } from "@/lib/two-factor-constants"
 import { verifyTwoFactorProofValueEdge } from "@/lib/two-factor-edge"
 
 // Protected routes that require authentication

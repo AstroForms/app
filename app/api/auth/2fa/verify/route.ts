@@ -4,10 +4,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import {
-  TWO_FACTOR_COOKIE_NAME,
   createTwoFactorProofValue,
   verifyTotpToken,
 } from "@/lib/two-factor"
+import { TWO_FACTOR_COOKIE_NAME } from "@/lib/two-factor-constants"
 
 export async function POST(req: NextRequest) {
   const session = await auth()
