@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 import { Prisma } from "@prisma/client"
+import { onChannelMemberCreated, onChannelMemberDeleted } from "@/lib/channel-members"
 
 // ==========================================
 // PROFILE ACTIONS
@@ -105,6 +106,12 @@ export async function createChannel(data: {
     },
   })
 
+  await onChannelMemberCreated({
+    channelId: channel.id,
+    userId: profile.id,
+    role: "OWNER",
+  })
+
   revalidatePath("/channels")
   return channel
 }
@@ -138,10 +145,10 @@ export async function joinChannel(channelId: string) {
       role: "MEMBER",
     },
   })
-
-  await prisma.channel.update({
-    where: { id: channelId },
-    data: { memberCount: { increment: 1 } },
+  await onChannelMemberCreated({
+    channelId,
+    userId: profile.id,
+    role: "MEMBER",
   })
 
   revalidatePath(`/channels/${channelId}`)
@@ -165,11 +172,7 @@ export async function leaveChannel(channelId: string) {
       },
     },
   })
-
-  await prisma.channel.update({
-    where: { id: channelId },
-    data: { memberCount: { decrement: 1 } },
-  })
+  await onChannelMemberDeleted(channelId)
 
   revalidatePath(`/channels/${channelId}`)
 }

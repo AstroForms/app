@@ -5,6 +5,7 @@ import { FeatureDisabledNotice } from "@/components/feature-disabled-notice"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { getFeatureFlags } from "@/lib/features"
+import { ensureBotInfrastructure } from "@/lib/bot-infrastructure"
 
 export default async function BotsPage() {
   const session = await auth()
@@ -22,6 +23,8 @@ export default async function BotsPage() {
       </DashboardShell>
     )
   }
+
+  await ensureBotInfrastructure()
 
   const bots = await prisma.bot.findMany({
     where: { ownerId: userId },

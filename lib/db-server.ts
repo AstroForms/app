@@ -1,5 +1,7 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { BOT_RELATED_TABLES, ensureBotInfrastructure } from "@/lib/bot-infrastructure"
+import { onChannelMemberCreated, onChannelMemberDeleted } from "@/lib/channel-members"
 
 type QueryFilter = {
   column: string
@@ -108,6 +110,29 @@ function mapFilters(table: string, filters: QueryFilter[]) {
   return where
 }
 
+function extractChannelIdsFromWhere(where: Record<string, unknown>) {
+  const channelIds = new Set<string>()
+  const channelFilter = where.channelId
+
+  if (typeof channelFilter === "string") {
+    channelIds.add(channelFilter)
+    return Array.from(channelIds)
+  }
+
+  if (channelFilter && typeof channelFilter === "object" && "in" in channelFilter) {
+    const values = (channelFilter as { in?: unknown }).in
+    if (Array.isArray(values)) {
+      for (const value of values) {
+        if (typeof value === "string" && value.trim()) {
+          channelIds.add(value)
+        }
+      }
+    }
+  }
+
+  return Array.from(channelIds)
+}
+
 function normalizeWriteData(table: string, payload: Record<string, any>) {
   if (table === "messages" && typeof payload.gifUrl === "string" && payload.gifUrl.trim()) {
     payload.mediaUrl = payload.gifUrl.trim()
@@ -141,6 +166,16 @@ function getModel(table: string) {
       return prisma.botActiveRule
     case "bot_channel_invites":
       return prisma.botChannelInvite
+    case "bot_verification_requests":
+      return prisma.botVerificationRequest
+    case "bot_channel_rules":
+      return prisma.botChannelRule
+    case "bot_execution_logs":
+      return prisma.botExecutionLog
+    case "bot_action_logs":
+      return prisma.botActionLog
+    case "scheduled_tasks":
+      return prisma.scheduledTask
     case "automations":
       return prisma.botAutomation
     case "messages":
@@ -171,6 +206,11 @@ function getInclude(table: string) {
       }
     case "bot_channel_invites":
       return { channel: { select: { id: true, name: true, iconUrl: true, isVerified: true } } }
+    case "bot_verification_requests":
+      return {
+        bot: { select: { id: true, name: true, avatarUrl: true } },
+        owner: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+      }
     case "automations":
       return { bot: { select: { name: true } } }
     case "bots":
@@ -331,6 +371,10 @@ class QueryBuilder {
   }
 
   async execute(action: "select" | "insert" | "update" | "delete", data?: any) {
+    if (BOT_RELATED_TABLES.has(this.state.table)) {
+      await ensureBotInfrastructure()
+    }
+
     const model = getModel(this.state.table)
     if (!model) return { data: null, error: "Unknown table" }
     const where = mapFilters(this.state.table, this.state.filters)
@@ -368,6 +412,18 @@ class QueryBuilder {
 
     if (action === "insert") {
       const created = await (model as any).create({ data: mappedData, include })
+
+      if (this.state.table === "channel_members") {
+        const createdMember = created as { channelId?: string; userId?: string; role?: string | null }
+        if (createdMember.channelId && createdMember.userId) {
+          await onChannelMemberCreated({
+            channelId: createdMember.channelId,
+            userId: createdMember.userId,
+            role: createdMember.role,
+          })
+        }
+      }
+
       return { data: mapRecord(this.state.table, created), error: null }
     }
 
@@ -378,7 +434,15 @@ class QueryBuilder {
     }
 
     if (action === "delete") {
+      const channelIds = this.state.table === "channel_members" ? extractChannelIdsFromWhere(where) : []
       await (model as any).deleteMany({ where })
+
+      if (this.state.table === "channel_members") {
+        for (const channelId of channelIds) {
+          await onChannelMemberDeleted(channelId)
+        }
+      }
+
       return { data: null, error: null }
     }
 

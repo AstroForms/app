@@ -5,6 +5,7 @@ import { FeatureDisabledNotice } from "@/components/feature-disabled-notice"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { isFeatureEnabled } from "@/lib/features"
+import { ensureBotInfrastructure } from "@/lib/bot-infrastructure"
 
 export default async function BotProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -23,6 +24,8 @@ export default async function BotProfilePage({ params }: { params: Promise<{ id:
       </DashboardShell>
     )
   }
+
+  await ensureBotInfrastructure()
 
   const bot = await prisma.bot.findUnique({
     where: { id },

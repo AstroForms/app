@@ -29,6 +29,7 @@ export default async function Page() {
     memberCount: number
     createdAt: Date
   }> = []
+  let postCountByChannel: Record<string, number> = {}
   let joinedChannels: Array<{ channel: { id: string; name: string; isVerified: boolean } }> = []
   let posts: any[] = []
   let sponsoredChannel: { id: string; name: string } | null = null
@@ -72,6 +73,16 @@ export default async function Page() {
         return b.createdAt.getTime() - a.createdAt.getTime()
       })
       .slice(0, 5)
+
+    const trendingChannelIds = trendingChannels.map((channel) => channel.id)
+    if (trendingChannelIds.length > 0) {
+      const groupedPosts = await prisma.post.groupBy({
+        by: ["channelId"],
+        where: { channelId: { in: trendingChannelIds } },
+        _count: { _all: true },
+      })
+      postCountByChannel = Object.fromEntries(groupedPosts.map((row) => [row.channelId, row._count._all]))
+    }
 
     const activeBoostedChannels = trendingCandidates.filter(
       (channel) => !!channel.boostedUntil && channel.boostedUntil.getTime() > now,
@@ -120,7 +131,7 @@ export default async function Page() {
       trendingChannels={trendingChannels.map((ch) => ({
         id: ch.id,
         name: ch.name,
-        post_count: 0,
+        post_count: postCountByChannel[ch.id] || 0,
         is_boosted: !!ch.boostedUntil && ch.boostedUntil.getTime() > now,
       }))}
       joinedChannels={joinedChannels.map((member) => ({

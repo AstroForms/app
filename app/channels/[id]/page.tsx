@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { ChannelDetail } from "@/components/channel-detail"
 import { prisma } from "@/lib/db"
+import { ensureBotInfrastructure } from "@/lib/bot-infrastructure"
 
 export default async function ChannelDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -56,6 +57,8 @@ export default async function ChannelDetailPage({ params }: { params: Promise<{ 
         select: { id: true },
       })
     : null
+
+  await ensureBotInfrastructure()
 
   const botInvites = await prisma.botChannelInvite.findMany({
     where: { channelId: id, status: "ACCEPTED" },
