@@ -633,6 +633,24 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showPromoteDialog, setShowPromoteDialog] = useState(false)
+  const [channelName, setChannelName] = useState(channel.name)
+  const [channelDescription, setChannelDescription] = useState(channel.description || "")
+  const [channelIsPublic, setChannelIsPublic] = useState(Boolean(channel.is_public ?? true))
+  const [settingsName, setSettingsName] = useState(channel.name)
+  const [settingsDescription, setSettingsDescription] = useState(channel.description || "")
+  const [settingsIsPublic, setSettingsIsPublic] = useState(Boolean(channel.is_public ?? true))
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [showDeleteChannelDialog, setShowDeleteChannelDialog] = useState(false)
+  const [deleteChannelConfirmation, setDeleteChannelConfirmation] = useState("")
+  const [isDeletingChannel, setIsDeletingChannel] = useState(false)
+  const [profileXp, setProfileXp] = useState<number | null>(null)
+  const [isPromotingChannel, setIsPromotingChannel] = useState(false)
+  const [boostedUntil, setBoostedUntil] = useState<string | null>(channel.boosted_until || null)
+  const [hasPendingPromotionRequest, setHasPendingPromotionRequest] = useState(
+    !!channel.has_pending_promotion_request,
+  )
+  const [isCopyingChannelLink, setIsCopyingChannelLink] = useState(false)
   
   // Post media states
   const [postImageUrl, setPostImageUrl] = useState("")
@@ -825,19 +843,20 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
     }
 
     setIsSavingSettings(true)
-    const supabase = createDbClient()
-    const { error } = await supabase
-      .from("channels")
-      .update({
+    const response = await fetch(`/api/channels/${channel.id}/manage`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         name: nextName,
         description: nextDescription || null,
-        is_public: settingsIsPublic,
-      })
-      .eq("id", channel.id)
-      .eq("owner_id", userId)
+        isPublic: settingsIsPublic,
+      }),
+    })
+    const data = await response.json().catch(() => ({}))
 
-    if (error) {
-      toast.error(`Einstellungen konnten nicht gespeichert werden: ${error.message}`)
+    if (!response.ok) {
+      const message = typeof data?.error === "string" ? data.error : "Einstellungen konnten nicht gespeichert werden"
+      toast.error(message)
       setIsSavingSettings(false)
       return
     }
@@ -848,6 +867,48 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
     toast.success("Channeleinstellungen gespeichert")
     setIsSavingSettings(false)
     router.refresh()
+  }
+
+  const handleCopyChannelLink = async () => {
+    try {
+      setIsCopyingChannelLink(true)
+      await navigator.clipboard.writeText(`${window.location.origin}/channels/${channel.id}`)
+      toast.success("Channel-Link kopiert")
+    } catch {
+      toast.error("Link konnte nicht kopiert werden")
+    } finally {
+      setIsCopyingChannelLink(false)
+    }
+  }
+
+  const handleDeleteChannel = async () => {
+    if (!isOwner) return
+    if (deleteChannelConfirmation.trim() !== channelName.trim()) {
+      toast.error("Bitte gib den exakten Channel-Namen ein.")
+      return
+    }
+
+    setIsDeletingChannel(true)
+    try {
+      const response = await fetch(`/api/channels/${channel.id}/manage`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation: deleteChannelConfirmation.trim() }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(typeof data?.error === "string" ? data.error : "Channel konnte nicht geloescht werden")
+      }
+      toast.success("Channel wurde geloescht")
+      router.push("/channels")
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Channel konnte nicht geloescht werden")
+    } finally {
+      setIsDeletingChannel(false)
+      setShowDeleteChannelDialog(false)
+      setDeleteChannelConfirmation("")
+    }
   }
 
   const handleJoin = async () => {
@@ -1192,6 +1253,17 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
                 </TooltipProvider>
               )}
               {isOwner && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyChannelLink}
+                  disabled={isCopyingChannelLink}
+                  className="bg-transparent text-foreground border-border/50"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                </Button>
+              )}
+              {isOwner && (
                 <Button variant="outline" size="icon" onClick={() => setShowSettings(!showSettings)} className="bg-transparent text-foreground border-border/50">
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -1215,9 +1287,80 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
           {/* Settings Panel for Owner */}
           {isOwner && showSettings && (
             <div className="mt-4 pt-4 border-t border-border/30">
-              <p className="text-sm text-muted-foreground mb-2">
-                Klicke auf das Icon oder Banner um es zu ändern (max. 5MB für Icon, 10MB für Banner)
+              <p className="text-sm text-muted-foreground mb-4">
+                Klicke auf das Icon oder Banner um es zu aendern (max. 5MB fuer Icon, 10MB fuer Banner)
               </p>
+              <div className="grid gap-3">
+                <div className="grid gap-2">
+                  <Label className="text-xs text-muted-foreground">Channel-Name</Label>
+                  <Input
+                    value={settingsName}
+                    onChange={(e) => setSettingsName(e.target.value)}
+                    maxLength={80}
+                    className="bg-secondary/30 border-border/50"
+                    placeholder="Channel-Name"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="text-xs text-muted-foreground">Beschreibung</Label>
+                  <Textarea
+                    value={settingsDescription}
+                    onChange={(e) => setSettingsDescription(e.target.value)}
+                    maxLength={500}
+                    className="min-h-[90px] bg-secondary/30 border-border/50"
+                    placeholder="Beschreibe deinen Channel..."
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/20 px-3 py-2">
+                  <div>
+                    <p className="text-sm text-foreground">Sichtbarkeit</p>
+                    <p className="text-xs text-muted-foreground">
+                      {settingsIsPublic ? "Oeffentlich in Discover sichtbar" : "Nur per direktem Link sichtbar"}
+                    </p>
+                  </div>
+                  <Switch checked={settingsIsPublic} onCheckedChange={setSettingsIsPublic} />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    onClick={handleSaveChannelSettings}
+                    disabled={isSavingSettings}
+                    className="text-primary-foreground"
+                  >
+                    {isSavingSettings ? "Speichern..." : "Channeleinstellungen speichern"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="bg-transparent border-border/50"
+                    onClick={handleCopyChannelLink}
+                    disabled={isCopyingChannelLink}
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Link teilen
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="bg-transparent border-border/50"
+                    onClick={() => {
+                      setSettingsName(channelName)
+                      setSettingsDescription(channelDescription)
+                      setSettingsIsPublic(channelIsPublic)
+                    }}
+                    disabled={isSavingSettings}
+                  >
+                    Zuruecksetzen
+                  </Button>
+                </div>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+                  <p className="text-sm font-medium text-destructive">Gefahrenzone</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Beim Loeschen werden alle Posts, Mitglieder und Channel-Daten unwiderruflich entfernt.
+                  </p>
+                  <Button variant="destructive" className="mt-3" onClick={() => setShowDeleteChannelDialog(true)}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Channel loeschen
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1521,6 +1664,47 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
               className="bg-transparent border-border/50"
             >
               Schliessen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteChannelDialog} onOpenChange={setShowDeleteChannelDialog}>
+        <DialogContent className="glass border-border/50">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Channel loeschen</DialogTitle>
+            <DialogDescription>
+              Gib zur Bestaetigung den Channel-Namen ein: <span className="font-semibold text-foreground">{channelName}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <Label htmlFor="delete-channel-confirm">Channel-Name</Label>
+            <Input
+              id="delete-channel-confirm"
+              value={deleteChannelConfirmation}
+              onChange={(e) => setDeleteChannelConfirmation(e.target.value)}
+              placeholder={channelName}
+              className="bg-secondary/30 border-border/50"
+            />
+            <p className="text-xs text-muted-foreground">
+              Diese Aktion kann nicht rueckgaengig gemacht werden.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteChannelDialog(false)}
+              className="bg-transparent border-border/50"
+              disabled={isDeletingChannel}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteChannel}
+              disabled={isDeletingChannel || deleteChannelConfirmation.trim().length === 0}
+            >
+              {isDeletingChannel ? "Loeschen..." : "Channel endgueltig loeschen"}
             </Button>
           </DialogFooter>
         </DialogContent>

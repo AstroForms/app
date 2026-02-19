@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { signIn as oauthSignIn } from "next-auth/react"
+import { signIn as oauthSignIn, signOut as authSignOut } from "next-auth/react"
 import { toast } from "sonner"
 import { Settings, Camera, ImagePlus, User, Lock, Eye, EyeOff, Heart, Users, MessageCircle, Shield, UserX } from "lucide-react"
 import { KontenVerknuepfen } from "./konten-verknuepfen"
@@ -95,6 +95,9 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmNewPassword, setConfirmNewPassword] = useState("")
+  const [deleteConfirmation, setDeleteConfirmation] = useState("")
+  const [deletePassword, setDeletePassword] = useState("")
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   
   // Cropper states
   const [cropperOpen, setCropperOpen] = useState(false)
@@ -387,6 +390,36 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       toast.error(err instanceof Error ? err.message : "Passwort konnte nicht geaendert werden")
     } finally {
       setIsChangingPassword(false)
+    }
+  }
+
+  const deleteOwnAccount = async () => {
+    if (deleteConfirmation.trim().toUpperCase() !== "KONTO LOESCHEN") {
+      toast.error("Bitte gib genau 'KONTO LOESCHEN' ein.")
+      return
+    }
+
+    setIsDeletingAccount(true)
+    try {
+      const response = await fetch("/api/account/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmation: deleteConfirmation,
+          currentPassword: deletePassword,
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || "Konto konnte nicht geloescht werden")
+      }
+
+      toast.success("Konto geloescht")
+      await authSignOut({ callbackUrl: "/" })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Konto konnte nicht geloescht werden")
+    } finally {
+      setIsDeletingAccount(false)
     }
   }
 
@@ -773,6 +806,47 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
                   </div>
                   <Button onClick={saveAccountSettings} disabled={isSavingAccountSettings} className="h-11 text-primary-foreground font-semibold">
                     {isSavingAccountSettings ? "Speichern..." : "Konto-Optionen speichern"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border-t border-border/40 pt-6">
+                <h3 className="text-base font-semibold text-destructive mb-2">Konto loeschen</h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Diese Aktion ist endgueltig. Alle Daten zu deinem Konto werden entfernt.
+                </p>
+                <div className="space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+                  <div className="grid gap-2">
+                    <Label className="text-foreground">Bestaetigung</Label>
+                    <Input
+                      value={deleteConfirmation}
+                      onChange={(e) => setDeleteConfirmation(e.target.value)}
+                      className="h-11 bg-secondary/50 border-border/50"
+                      placeholder="KONTO LOESCHEN"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Tippe exakt <span className="font-medium text-foreground">KONTO LOESCHEN</span> ein.
+                    </p>
+                  </div>
+                  {accountOverview?.hasPassword && (
+                    <div className="grid gap-2">
+                      <Label className="text-foreground">Aktuelles Passwort</Label>
+                      <Input
+                        type="password"
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        className="h-11 bg-secondary/50 border-border/50"
+                        placeholder="Aktuelles Passwort"
+                      />
+                    </div>
+                  )}
+                  <Button
+                    variant="destructive"
+                    onClick={deleteOwnAccount}
+                    disabled={isDeletingAccount || deleteConfirmation.trim().length === 0}
+                    className="h-11 font-semibold"
+                  >
+                    {isDeletingAccount ? "Konto wird geloescht..." : "Konto endgueltig loeschen"}
                   </Button>
                 </div>
               </div>

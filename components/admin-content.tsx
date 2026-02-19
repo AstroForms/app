@@ -88,6 +88,18 @@ type TrustSafetyKpis = {
   topReasons: Array<{ reason: string; count: number }>
 }
 
+type AdminChannel = {
+  id: string
+  name: string
+  description: string | null
+  isPublic: boolean
+  isVerified: boolean
+  memberCount: number
+  createdAt: string
+  ownerId: string
+  ownerUsername: string
+}
+
 export function AdminContent({
   reports,
   unverifiedChannels,
@@ -125,6 +137,9 @@ export function AdminContent({
   const [userSearchResults, setUserSearchResults] = useState<User[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [userFilter, setUserFilter] = useState("")
+  const [channels, setChannels] = useState<AdminChannel[]>([])
+  const [channelLoading, setChannelLoading] = useState(false)
+  const [channelFilter, setChannelFilter] = useState("")
   const [features, setFeatures] = useState<FeatureFlags>({
     bots: true,
     messages: true,
@@ -194,6 +209,27 @@ export function AdminContent({
 
   useEffect(() => {
     void loadUsers()
+  }, [])
+
+  const loadChannels = async () => {
+    setChannelLoading(true)
+    try {
+      const res = await fetch("/api/admin/search-channel?limit=100")
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(data?.error || "Fehler bei der Channel-Suche")
+      }
+      setChannels(Array.isArray(data?.channels) ? data.channels : [])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Fehler bei der Channel-Suche")
+      setChannels([])
+    } finally {
+      setChannelLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadChannels()
   }, [])
 
   const loadFeatures = async () => {
@@ -452,6 +488,30 @@ export function AdminContent({
     }
   }
 
+  const deleteChannel = async (channel: AdminChannel) => {
+    const confirmed = window.confirm(
+      `Channel #${channel.name} wirklich loeschen? Diese Aktion kann nicht rueckgaengig gemacht werden.`,
+    )
+    if (!confirmed) return
+
+    try {
+      const res = await fetch(`/api/admin/channels/${channel.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation: channel.name }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Channel konnte nicht geloescht werden")
+      }
+      toast.success("Channel geloescht")
+      await loadChannels()
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Channel konnte nicht geloescht werden")
+    }
+  }
+
   const formatPackageLabel = (request: PromotionRequest) => {
     if (request.package_key === "day") return "1 Tag"
     if (request.package_key === "week") return "7 Tage"
@@ -491,6 +551,14 @@ export function AdminContent({
     const username = user.username.toLowerCase()
     const displayName = user.displayName?.toLowerCase() || ""
     return username.includes(filterValue) || displayName.includes(filterValue)
+  })
+  const filteredChannels = channels.filter((channel) => {
+    const filterValue = channelFilter.trim().toLowerCase()
+    if (!filterValue) return true
+    const name = channel.name.toLowerCase()
+    const description = channel.description?.toLowerCase() || ""
+    const owner = channel.ownerUsername.toLowerCase()
+    return name.includes(filterValue) || description.includes(filterValue) || owner.includes(filterValue)
   })
 
   return (
@@ -662,6 +730,7 @@ export function AdminContent({
           <TabsTrigger value="trust">Trust & Safety</TabsTrigger>
           <TabsTrigger value="verify">Verifizierung</TabsTrigger>
           <TabsTrigger value="users">Nutzer</TabsTrigger>
+          <TabsTrigger value="channels">Channels</TabsTrigger>
           <TabsTrigger value="bans">Bans</TabsTrigger>
           <TabsTrigger value="features">Funktionen</TabsTrigger>
         </TabsList>
@@ -942,6 +1011,59 @@ export function AdminContent({
                         className="bg-transparent"
                       >
                         <Shield className="h-3.5 w-3.5 mr-1" /> Admin entfernen
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="channels">
+          <div className="glass rounded-xl p-6">
+            <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Hash className="h-4 w-4 text-primary" /> Channelliste
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Alle Channels mit Admin-Aktionen zum Bearbeiten und Loeschen.
+            </p>
+            <div className="flex gap-2 mb-4">
+              <Input
+                placeholder="In Liste filtern..."
+                className="bg-secondary/50 border-border/50 flex-1"
+                value={channelFilter}
+                onChange={(e) => setChannelFilter(e.target.value)}
+              />
+              <Button onClick={loadChannels} disabled={channelLoading} className="text-primary-foreground">
+                Aktualisieren
+              </Button>
+            </div>
+            {channelLoading ? (
+              <p className="text-sm text-muted-foreground">Channels werden geladen...</p>
+            ) : filteredChannels.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Keine Channels gefunden.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {filteredChannels.map((channel) => (
+                  <div key={channel.id} className="glass rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-foreground text-sm">#{channel.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        von @{channel.ownerUsername || channel.ownerId} - {channel.memberCount} Mitglieder
+                      </p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground/80 mt-1">
+                        {channel.isPublic ? "oeffentlich" : "privat"} | {channel.isVerified ? "verifiziert" : "nicht verifiziert"}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" asChild className="bg-transparent">
+                        <Link href={`/admin/channels/${channel.id}`}>
+                          <Eye className="h-3.5 w-3.5 mr-1" /> Bearbeiten
+                        </Link>
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => deleteChannel(channel)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Loeschen
                       </Button>
                     </div>
                   </div>
