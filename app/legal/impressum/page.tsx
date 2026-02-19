@@ -30,7 +30,7 @@ export default function ImpressumPage() {
 
         <div className="prose prose-invert max-w-none">
           <section className="glass rounded-2xl p-8 mb-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Diensteanbieter</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Dienstanbieter</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               AstroForms
               <br />
@@ -59,20 +59,20 @@ export default function ImpressumPage() {
           </section>
 
           <section className="glass rounded-2xl p-8 mb-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Haftung fuer Inhalte</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Haftung f+r Inhalte</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Als Diensteanbieter sind wir gemaess den allgemeinen Gesetzen fuer eigene Inhalte auf diesen Seiten
-              verantwortlich. Wir sind jedoch nicht verpflichtet, uebermittelte oder gespeicherte fremde
-              Informationen zu ueberwachen oder nach Umstaenden zu forschen, die auf eine rechtswidrige Taetigkeit
+              Als Diensteanbieter sind wir gemäss den allgemeinen Gesetzen für eigene Inhalte auf diesen Seiten
+              verantwortlich. Wir sind jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde
+              Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit
               hinweisen.
             </p>
           </section>
 
           <section className="glass rounded-2xl p-8">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Haftung fuer Links</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">Haftung für Links</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Unser Angebot enthaelt Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss
-              haben. Deshalb koennen wir fuer diese fremden Inhalte auch keine Gewaehr uebernehmen. Fuer die Inhalte
+              Unser Angebot enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss
+              haben. Deshalb koennen wir fuer diese fremden Inhalte auch keine Gewähr uebernehmen. Fuer die Inhalte
               der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich.
             </p>
           </section>

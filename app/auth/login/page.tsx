@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
 import { Rocket, Github, KeyRound } from "lucide-react"
 
 function DiscordIcon({ className }: { className?: string }) {
@@ -46,6 +46,32 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const mapAuthError = (value: string | null | undefined) => {
+    if (!value) return null
+    switch (value) {
+      case "AccountBanned":
+        return "Dein Account ist aktuell gesperrt. Bitte kontaktiere den Support."
+      case "CredentialsSignin":
+        return "Login fehlgeschlagen. Pruefe Benutzername/E-Mail und Passwort."
+      case "AccessDenied":
+        return "Zugriff verweigert. Dein Account ist eventuell eingeschraenkt."
+      case "Configuration":
+        return "Login ist gerade nicht verfuegbar (Server-Konfiguration). Bitte spaeter erneut versuchen."
+      case "OAuthAccountNotLinked":
+        return "Dieser OAuth-Login ist nicht mit deinem Account verknuepft."
+      default:
+        return "Anmeldung fehlgeschlagen. Bitte erneut versuchen."
+    }
+  }
+
+  useEffect(() => {
+    const incomingError = searchParams.get("error")
+    if (incomingError) {
+      setError(mapAuthError(incomingError))
+    }
+  }, [searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,7 +89,7 @@ export default function LoginPage() {
         throw new Error("Login fehlgeschlagen")
       }
       if (result.error || !result.ok) {
-        throw new Error(result.error || "Ungueltige Anmeldedaten")
+        throw new Error(mapAuthError(result.error) || "Ungueltige Anmeldedaten")
       }
       router.push(result.url || "/")
     } catch (err: unknown) {

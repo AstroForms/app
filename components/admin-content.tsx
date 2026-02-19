@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { createDbClient } from "@/lib/db-client"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import {
   Shield, BadgeCheck, Flag, Ban, Hash, Bot,
-  CheckCircle, XCircle, Trash2, AlertTriangle, Lock, User, Clock, Eye, ScrollText
+  CheckCircle, XCircle, Trash2, AlertTriangle, Lock, User, Clock, Eye, ScrollText, BarChart3
 } from "lucide-react"
 import { useEffect, useState } from "react"
 // ...existing code...
@@ -29,6 +29,8 @@ interface Report {
   target_id: string
   reason: string
   status: string
+  details?: string | null
+  admin_notes?: string | null
   created_at: string
   profiles: { username: string }
 }
@@ -64,6 +66,14 @@ type FeatureFlags = {
   bots: boolean
   messages: boolean
   automations: boolean
+}
+
+type TrustSafetyKpis = {
+  pendingReports: number
+  newReports24h: number
+  activeBans: number
+  banRate7d: number
+  topReasons: Array<{ reason: string; count: number }>
 }
 
 export function AdminContent({
@@ -108,6 +118,9 @@ export function AdminContent({
   })
   const [featuresLoading, setFeaturesLoading] = useState(false)
   const [featuresSaving, setFeaturesSaving] = useState<null | keyof FeatureFlags>(null)
+  const [reportStatusFilter, setReportStatusFilter] = useState<"pending" | "resolved" | "dismissed" | "all">("pending")
+  const [kpis, setKpis] = useState<TrustSafetyKpis | null>(null)
+  const [kpisLoading, setKpisLoading] = useState(false)
 
   const verifyChannel = async (channelId: string) => {
     const supabase = createDbClient()
@@ -194,6 +207,27 @@ export function AdminContent({
     void loadFeatures()
   }, [])
 
+  const loadTrustSafety = async () => {
+    setKpisLoading(true)
+    try {
+      const res = await fetch("/api/admin/trust-safety", { cache: "no-store" })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(data?.error || "Trust-&-Safety-Daten konnten nicht geladen werden")
+      }
+      setKpis(data?.kpis || null)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Trust-&-Safety-Daten konnten nicht geladen werden")
+      setKpis(null)
+    } finally {
+      setKpisLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadTrustSafety()
+  }, [])
+
   const toggleFeature = async (feature: keyof FeatureFlags, enabled: boolean) => {
     const previous = features
     setFeatures((current) => ({ ...current, [feature]: enabled }))
@@ -274,11 +308,31 @@ export function AdminContent({
     }
   }
 
-  const resolveReport = async (reportId: string, status: string) => {
+  const resolveReport = async (reportId: string, status: "resolved" | "dismissed") => {
     const supabase = createDbClient()
-    await supabase.from("reports").update({ status }).eq("id", reportId)
+    await supabase
+      .from("reports")
+      .update({
+        status,
+        reviewed_by: userId,
+        reviewed_at: new Date().toISOString(),
+        admin_notes: modReason || null,
+      })
+      .eq("id", reportId)
     toast.success(`Report ${status === "resolved" ? "aufgeloest" : "abgelehnt"}`)
     router.refresh()
+  }
+
+  const banUserById = async (targetUserId: string, reason: string, duration: string) => {
+    const res = await fetch("/api/admin/ban-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: targetUserId, reason, duration }),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok || !data?.success) {
+      throw new Error(data?.error || "Ban fehlgeschlagen")
+    }
   }
 
   const handleReportAction = (report: Report) => {
@@ -308,12 +362,7 @@ export function AdminContent({
     }
 
     if ((action === "ban_owner" || action === "lock_and_ban") && channelRow?.owner_id) {
-      await supabase.from("bans").insert({
-        user_id: channelRow.owner_id,
-        banned_by: userId,
-        reason: modReason || "Channel-Report",
-        is_global: true,
-      })
+      await banUserById(channelRow.owner_id, modReason || "Channel-Report", "permanent")
       toast.success("Owner gebannt!")
     }
 
@@ -339,36 +388,12 @@ export function AdminContent({
       if (postRow?.user_id) targetUserId = postRow.user_id
     }
 
-    if (userModAction === "warn") {
-      await supabase.from("warnings").insert({
-        user_id: targetUserId,
-        warned_by: userId,
-        reason: modReason || "Verwarnung",
-      })
-      toast.success("Nutzer verwarnt!")
-    } else if (userModAction === "temp_ban") {
-      const durations: Record<string, number> = {
-        "1h": 1, "6h": 6, "1d": 24, "3d": 72, "7d": 168, "30d": 720
-      }
-      const hours = durations[userModDuration] || 24
-      const bannedUntil = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString()
-      
-      await supabase.from("bans").insert({
-        user_id: targetUserId,
-        banned_by: userId,
-        reason: modReason || "Temporärer Ban",
-        is_global: true,
-        banned_until: bannedUntil,
-      })
-      toast.success(`Nutzer für ${userModDuration} gebannt!`)
+    if (userModAction === "temp_ban") {
+      const duration = ["1h", "6h", "1d", "3d", "7d", "30d"].includes(userModDuration) ? userModDuration : "1d"
+      await banUserById(targetUserId, modReason || "Temporarer Ban", duration)
+      toast.success(`Nutzer fuer ${duration} gebannt!`)
     } else if (userModAction === "perma_ban") {
-      await supabase.from("bans").insert({
-        user_id: targetUserId,
-        banned_by: userId,
-        reason: modReason || "Permanenter Ban",
-        is_global: true,
-        banned_until: null,
-      })
+      await banUserById(targetUserId, modReason || "Permanenter Ban", "permanent")
       toast.success("Nutzer permanent gebannt!")
     }
 
@@ -381,45 +406,42 @@ export function AdminContent({
 
   const handleBan = async () => {
     if (!banUserId.trim()) return
-    const supabase = createDbClient()
-    
-    let bannedUntil: string | null = null
-    if (banDuration !== "permanent") {
-      const durations: Record<string, number> = {
-        "1h": 1, "6h": 6, "1d": 24, "3d": 72, "7d": 168, "30d": 720
-      }
-      const hours = durations[banDuration] || 24
-      bannedUntil = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString()
-    }
-    
-    const { error } = await supabase.from("bans").insert({
-      user_id: banUserId,
-      banned_by: userId,
-      reason: banReason || null,
-      is_global: true,
-      banned_until: bannedUntil,
-    })
-    if (error) {
-      toast.error(error.message)
-    } else {
-      toast.success(banDuration === "permanent" ? "Nutzer permanent gebannt" : `Nutzer für ${banDuration} gebannt`)
+    try {
+      await banUserById(banUserId, banReason || "", banDuration)
+      toast.success(banDuration === "permanent" ? "Nutzer permanent gebannt" : `Nutzer fuer ${banDuration} gebannt`)
       setBanUserId("")
       setBanReason("")
       setBanDuration("permanent")
       setShowBanDialog(false)
       router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Ban fehlgeschlagen")
     }
   }
 
-  const removeBan = async (banId: string) => {
-    const supabase = createDbClient()
-    await supabase.from("bans").delete().eq("id", banId)
-    toast.success("Ban aufgehoben")
-    router.refresh()
+  const removeBan = async (targetUserId: string) => {
+    try {
+      const res = await fetch("/api/admin/unban-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: targetUserId }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Unban fehlgeschlagen")
+      }
+      toast.success("Ban aufgehoben")
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unban fehlgeschlagen")
+    }
   }
 
-  // Filter only pending reports
-  const pendingReports = reports.filter(r => r.status === "pending")
+  const filteredReports = reports.filter((report) => {
+    if (reportStatusFilter === "all") return true
+    return String(report.status || "").toLowerCase() === reportStatusFilter
+  })
+  const pendingReports = reports.filter((r) => String(r.status || "").toLowerCase() === "pending")
   const filteredUsers = userSearchResults.filter((user) => {
     const filterValue = userFilter.trim().toLowerCase()
     if (!filterValue) return true
@@ -445,7 +467,7 @@ export function AdminContent({
               <Textarea 
                 value={modReason} 
                 onChange={(e) => setModReason(e.target.value)} 
-                placeholder="Grund für die Aktion..." 
+                placeholder="Grund fÃ¼r die Aktion..." 
                 className="bg-secondary/50 border-border/50" 
               />
             </div>
@@ -492,14 +514,13 @@ export function AdminContent({
           </DialogHeader>
           <div className="flex flex-col gap-4 mt-4">
             <div className="grid gap-2">
-              <Label className="text-foreground">Aktion auswählen</Label>
+              <Label className="text-foreground">Aktion auswÃ¤hlen</Label>
               <Select value={userModAction} onValueChange={setUserModAction}>
                 <SelectTrigger className="bg-secondary/50 border-border/50">
-                  <SelectValue placeholder="Aktion wählen..." />
+                  <SelectValue placeholder="Aktion wÃ¤hlen..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="warn">Nutzer verwarnen</SelectItem>
-                  <SelectItem value="temp_ban">Temporär bannen</SelectItem>
+                  <SelectItem value="temp_ban">TemporÃ¤r bannen</SelectItem>
                   <SelectItem value="perma_ban">Permanent bannen</SelectItem>
                 </SelectContent>
               </Select>
@@ -529,7 +550,7 @@ export function AdminContent({
               <Textarea 
                 value={modReason} 
                 onChange={(e) => setModReason(e.target.value)} 
-                placeholder="Grund für die Aktion..." 
+                placeholder="Grund fÃ¼r die Aktion..." 
                 className="bg-secondary/50 border-border/50" 
               />
             </div>
@@ -539,7 +560,7 @@ export function AdminContent({
               Abbrechen
             </Button>
             <Button onClick={handleUserModAction} disabled={!userModAction} variant={userModAction === "perma_ban" ? "destructive" : "default"}>
-              Ausführen
+              AusfÃ¼hren
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -595,6 +616,7 @@ export function AdminContent({
       <Tabs defaultValue="reports">
         <TabsList className="glass mb-6">
           <TabsTrigger value="reports">Reports</TabsTrigger>
+          <TabsTrigger value="trust">Trust & Safety</TabsTrigger>
           <TabsTrigger value="verify">Verifizierung</TabsTrigger>
           <TabsTrigger value="users">Nutzer</TabsTrigger>
           <TabsTrigger value="bans">Bans</TabsTrigger>
@@ -602,14 +624,20 @@ export function AdminContent({
         </TabsList>
 
         <TabsContent value="reports">
-          {pendingReports.length === 0 ? (
+          <div className="mb-4 flex items-center gap-2">
+            <Button size="sm" variant={reportStatusFilter === "pending" ? "default" : "outline"} className={reportStatusFilter === "pending" ? "" : "bg-transparent"} onClick={() => setReportStatusFilter("pending")}>Offen</Button>
+            <Button size="sm" variant={reportStatusFilter === "resolved" ? "default" : "outline"} className={reportStatusFilter === "resolved" ? "" : "bg-transparent"} onClick={() => setReportStatusFilter("resolved")}>Resolved</Button>
+            <Button size="sm" variant={reportStatusFilter === "dismissed" ? "default" : "outline"} className={reportStatusFilter === "dismissed" ? "" : "bg-transparent"} onClick={() => setReportStatusFilter("dismissed")}>Dismissed</Button>
+            <Button size="sm" variant={reportStatusFilter === "all" ? "default" : "outline"} className={reportStatusFilter === "all" ? "" : "bg-transparent"} onClick={() => setReportStatusFilter("all")}>Alle</Button>
+          </div>
+          {filteredReports.length === 0 ? (
             <div className="glass rounded-2xl p-12 text-center">
               <Flag className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">Keine offenen Reports</p>
+              <p className="text-muted-foreground">Keine Reports in diesem Filter</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {pendingReports.map((report) => (
+              {filteredReports.map((report) => (
                 <div key={report.id} className="glass rounded-xl p-5">
                   <div className="flex items-start justify-between">
                     <div>
@@ -620,6 +648,8 @@ export function AdminContent({
                         <span className="text-xs text-muted-foreground capitalize">{report.target_type}</span>
                       </div>
                       <p className="text-sm text-foreground">{report.reason}</p>
+                      {report.details ? <p className="text-xs text-muted-foreground mt-1">{report.details}</p> : null}
+                      <p className="text-[10px] text-muted-foreground mt-1">Target: {report.target_type} #{report.target_id}</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         von @{report.profiles?.username} - {new Date(report.created_at).toLocaleDateString("de-DE")}
                       </p>
@@ -630,7 +660,7 @@ export function AdminContent({
                         variant="ghost" 
                         onClick={() => handleReportAction(report)} 
                         className="text-green-400 hover:text-green-300"
-                        title="Aktion durchführen"
+                        title="Aktion durchfÃ¼hren"
                       >
                         <CheckCircle className="h-4 w-4" />
                       </Button>
@@ -649,6 +679,58 @@ export function AdminContent({
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="trust">
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" /> Trust & Safety
+              </h3>
+              <Button size="sm" variant="outline" className="bg-transparent" onClick={loadTrustSafety}>Aktualisieren</Button>
+            </div>
+            {kpisLoading ? (
+              <p className="text-sm text-muted-foreground">Daten werden geladen...</p>
+            ) : !kpis ? (
+              <p className="text-sm text-muted-foreground">Keine Daten verfÃ¼gbar.</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-4">
+                  <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
+                    <p className="text-xs text-muted-foreground">Offene Reports</p>
+                    <p className="text-xl font-semibold text-foreground">{kpis.pendingReports}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
+                    <p className="text-xs text-muted-foreground">Neue Reports (24h)</p>
+                    <p className="text-xl font-semibold text-foreground">{kpis.newReports24h}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
+                    <p className="text-xs text-muted-foreground">Aktive Bans</p>
+                    <p className="text-xl font-semibold text-foreground">{kpis.activeBans}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
+                    <p className="text-xs text-muted-foreground">Ban-Rate (7d)</p>
+                    <p className="text-xl font-semibold text-foreground">{kpis.banRate7d}%</p>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
+                  <p className="text-sm font-medium text-foreground mb-2">Top Report-GrÃ¼nde (7d)</p>
+                  {kpis.topReasons.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Keine EintrÃ¤ge.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {kpis.topReasons.map((entry) => (
+                        <div key={entry.reason} className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">{entry.reason}</span>
+                          <span className="text-foreground font-medium">{entry.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="verify">
@@ -833,7 +915,7 @@ export function AdminContent({
                       <p className="font-medium text-foreground text-sm">@{ban.profiles?.username}</p>
                       {ban.banned_until ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] font-medium text-yellow-400">
-                          <Clock className="h-3 w-3" /> Temporär
+                          <Clock className="h-3 w-3" /> TemporÃ¤r
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
@@ -847,7 +929,7 @@ export function AdminContent({
                       {ban.banned_until && ` - Bis: ${new Date(ban.banned_until).toLocaleDateString("de-DE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
                     </p>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => removeBan(ban.id)} className="bg-transparent text-foreground border-border/50">
+                  <Button size="sm" variant="outline" onClick={() => removeBan(ban.user_id)} className="bg-transparent text-foreground border-border/50">
                     <Trash2 className="h-3.5 w-3.5 mr-1" /> Aufheben
                   </Button>
                 </div>
@@ -907,3 +989,4 @@ export function AdminContent({
     </div>
   )
 }
+

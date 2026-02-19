@@ -40,6 +40,7 @@ export default auth(async (req) => {
     response.cookies.delete("__Secure-authjs.callback-url")
     response.cookies.delete("authjs.callback-url")
     response.cookies.delete("authjs.session-token")
+    response.cookies.delete("__Secure-authjs.session-token")
     return response
   }
 

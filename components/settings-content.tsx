@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { signIn as oauthSignIn } from "next-auth/react"
-import { signIn as passkeySignIn } from "next-auth/webauthn"
 import { toast } from "sonner"
 import { Settings, Camera, ImagePlus, User, Lock, Eye, EyeOff, Heart, Users, MessageCircle, Shield, UserX } from "lucide-react"
 import { KontenVerknuepfen } from "./konten-verknuepfen"
@@ -55,18 +54,17 @@ type LinkedProvider = {
   providerAccountId: string
 }
 
-type LinkedPasskey = {
-  credentialID: string
-  credentialDeviceType: string
-  credentialBackedUp: boolean
-  transports: string | null
-}
-
 type AccountOverview = {
   email: string | null
   hasPassword: boolean
   providers: LinkedProvider[]
-  passkeys: LinkedPasskey[]
+}
+
+type AccountSettings = {
+  emailNotifications: boolean
+  marketingEmails: boolean
+  loginAlerts: boolean
+  profileVisibilityTips: boolean
 }
 
 export function SettingsContent({ profile }: { profile: Profile | null }) {
@@ -86,6 +84,17 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [accountOverview, setAccountOverview] = useState<AccountOverview | null>(null)
+  const [accountSettings, setAccountSettings] = useState<AccountSettings>({
+    emailNotifications: true,
+    marketingEmails: false,
+    loginAlerts: true,
+    profileVisibilityTips: true,
+  })
+  const [isSavingAccountSettings, setIsSavingAccountSettings] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmNewPassword, setConfirmNewPassword] = useState("")
   
   // Cropper states
   const [cropperOpen, setCropperOpen] = useState(false)
@@ -115,6 +124,30 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
   useEffect(() => {
     void loadLinkedAccounts()
   }, [loadLinkedAccounts])
+
+  const loadAccountSettings = useCallback(async () => {
+    try {
+      const response = await fetch("/api/account/settings", { cache: "no-store" })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || "Konto-Einstellungen konnten nicht geladen werden")
+      }
+      if (data?.settings) {
+        setAccountSettings({
+          emailNotifications: Boolean(data.settings.emailNotifications),
+          marketingEmails: Boolean(data.settings.marketingEmails),
+          loginAlerts: Boolean(data.settings.loginAlerts),
+          profileVisibilityTips: Boolean(data.settings.profileVisibilityTips),
+        })
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Konto-Einstellungen konnten nicht geladen werden")
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadAccountSettings()
+  }, [loadAccountSettings])
 
   const uploadImage = async (blob: Blob, type: "avatar" | "banner") => {
     if (!profile) return null
@@ -280,18 +313,6 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
     }
   }
 
-  const handlePasskeyRegister = async () => {
-    setIsLinking(true)
-    try {
-      await passkeySignIn("passkey", { action: "register", redirectTo: "/settings" })
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Passkey konnte nicht registriert werden")
-    } finally {
-      setIsLinking(false)
-      await loadLinkedAccounts()
-    }
-  }
-
   const handleDisconnectProvider = async (provider: string) => {
     setIsDisconnecting(true)
     try {
@@ -313,24 +334,59 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
     }
   }
 
-  const handleRemovePasskey = async (credentialID: string) => {
-    setIsDisconnecting(true)
+  const saveAccountSettings = async () => {
+    setIsSavingAccountSettings(true)
     try {
-      const response = await fetch("/api/account/linked", {
-        method: "DELETE",
+      const response = await fetch("/api/account/settings", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "passkey", credentialID }),
+        body: JSON.stringify({ settings: accountSettings }),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(data.error || "Passkey konnte nicht entfernt werden")
+        throw new Error(data.error || "Konto-Einstellungen konnten nicht gespeichert werden")
       }
-      toast.success("Passkey entfernt")
+      toast.success("Konto-Einstellungen gespeichert")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Konto-Einstellungen konnten nicht gespeichert werden")
+    } finally {
+      setIsSavingAccountSettings(false)
+    }
+  }
+
+  const changePassword = async () => {
+    if (!newPassword || newPassword.length < 8) {
+      toast.error("Neues Passwort muss mindestens 8 Zeichen haben.")
+      return
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast.error("Neue Passwoerter stimmen nicht ueberein.")
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      const response = await fetch("/api/account/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || "Passwort konnte nicht geaendert werden")
+      }
+      toast.success("Passwort erfolgreich geaendert")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmNewPassword("")
       await loadLinkedAccounts()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Passkey konnte nicht entfernt werden")
+      toast.error(err instanceof Error ? err.message : "Passwort konnte nicht geaendert werden")
     } finally {
-      setIsDisconnecting(false)
+      setIsChangingPassword(false)
     }
   }
 
@@ -352,7 +408,7 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="glass w-full grid grid-cols-3 mb-6">
+        <TabsList className="glass w-full grid grid-cols-4 mb-6">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Profil
@@ -363,7 +419,11 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
           </TabsTrigger>
           <TabsTrigger value="accounts" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
-            Konten verknüpfen
+            Konten
+          </TabsTrigger>
+          <TabsTrigger value="account" className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            Konto
           </TabsTrigger>
         </TabsList>
 
@@ -622,10 +682,102 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
             isDisconnecting={isDisconnecting}
             accountOverview={accountOverview}
             onLinkAccount={handleLinkAccount}
-            onPasskeyRegister={handlePasskeyRegister}
             onDisconnectProvider={handleDisconnectProvider}
-            onRemovePasskey={handleRemovePasskey}
           />
+        </TabsContent>
+        <TabsContent value="account">
+          <div className="glass rounded-2xl p-6 md:p-8">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Passwort ändern</h2>
+                <p className="text-sm text-muted-foreground">Setze ein neues Passwort für deinen Account.</p>
+              </div>
+              <div className="grid gap-3">
+                <div className="grid gap-2">
+                  <Label className="text-foreground">Aktuelles Passwort</Label>
+                  <Input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="h-11 bg-secondary/50 border-border/50"
+                    placeholder="Aktuelles Passwort"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="text-foreground">Neues Passwort</Label>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="h-11 bg-secondary/50 border-border/50"
+                    placeholder="Mindestens 8 Zeichen"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="text-foreground">Neues Passwort bestätigen</Label>
+                  <Input
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    className="h-11 bg-secondary/50 border-border/50"
+                    placeholder="Neues Passwort wiederholen"
+                  />
+                </div>
+                <Button onClick={changePassword} disabled={isChangingPassword} className="h-11 text-primary-foreground font-semibold">
+                  {isChangingPassword ? "Wird geändert..." : "Passwort ändern"}
+                </Button>
+              </div>
+
+              <div className="border-t border-border/40 pt-6">
+                <h3 className="text-base font-semibold text-foreground mb-3">Konto-Optionen</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-xl bg-secondary/30 p-4">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">E-Mail-Benachrichtigungen</p>
+                      <p className="text-xs text-muted-foreground">Wichtige Updates per E-Mail erhalten.</p>
+                    </div>
+                    <Switch
+                      checked={accountSettings.emailNotifications}
+                      onCheckedChange={(checked) => setAccountSettings((prev) => ({ ...prev, emailNotifications: checked }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl bg-secondary/30 p-4">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Marketing-E-Mails</p>
+                      <p className="text-xs text-muted-foreground">Produktneuigkeiten und Tipps per E-Mail.</p>
+                    </div>
+                    <Switch
+                      checked={accountSettings.marketingEmails}
+                      onCheckedChange={(checked) => setAccountSettings((prev) => ({ ...prev, marketingEmails: checked }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl bg-secondary/30 p-4">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Login-Alerts</p>
+                      <p className="text-xs text-muted-foreground">Hinweis bei neuen Anmeldungen.</p>
+                    </div>
+                    <Switch
+                      checked={accountSettings.loginAlerts}
+                      onCheckedChange={(checked) => setAccountSettings((prev) => ({ ...prev, loginAlerts: checked }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl bg-secondary/30 p-4">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Profil-Tipps anzeigen</p>
+                      <p className="text-xs text-muted-foreground">Hilfetexte für Profil-/Sichtbarkeitseinstellungen.</p>
+                    </div>
+                    <Switch
+                      checked={accountSettings.profileVisibilityTips}
+                      onCheckedChange={(checked) => setAccountSettings((prev) => ({ ...prev, profileVisibilityTips: checked }))}
+                    />
+                  </div>
+                  <Button onClick={saveAccountSettings} disabled={isSavingAccountSettings} className="h-11 text-primary-foreground font-semibold">
+                    {isSavingAccountSettings ? "Speichern..." : "Konto-Optionen speichern"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Github, KeyRound, Link2Off, ShieldCheck, Trash2 } from "lucide-react"
+import { Github, Link2Off, ShieldCheck } from "lucide-react"
 
 type OAuthProvider = "google" | "discord" | "github" | "microsoft-entra-id"
 
@@ -10,18 +10,10 @@ type LinkedProvider = {
   providerAccountId: string
 }
 
-type LinkedPasskey = {
-  credentialID: string
-  credentialDeviceType: string
-  credentialBackedUp: boolean
-  transports: string | null
-}
-
 type AccountOverview = {
   email: string | null
   hasPassword: boolean
   providers: LinkedProvider[]
-  passkeys: LinkedPasskey[]
 }
 
 interface KontenVerknuepfenProps {
@@ -30,9 +22,7 @@ interface KontenVerknuepfenProps {
   isDisconnecting: boolean
   accountOverview: AccountOverview | null
   onLinkAccount: (provider: OAuthProvider) => void
-  onPasskeyRegister: () => void
   onDisconnectProvider: (provider: string) => void
-  onRemovePasskey: (credentialID: string) => void
 }
 
 const providerMeta: Record<OAuthProvider, { label: string; icon: string }> = {
@@ -48,9 +38,7 @@ export function KontenVerknuepfen({
   isDisconnecting,
   accountOverview,
   onLinkAccount,
-  onPasskeyRegister,
   onDisconnectProvider,
-  onRemovePasskey,
 }: KontenVerknuepfenProps) {
   const linkedProviders = new Set((accountOverview?.providers || []).map((entry) => entry.provider))
 
@@ -82,7 +70,7 @@ export function KontenVerknuepfen({
               Passwort: {accountOverview?.hasPassword ? "gesetzt" : "nicht gesetzt"}
             </p>
             <p className="text-xs text-muted-foreground">
-              Provider: {accountOverview?.providers.length || 0} | Passkeys: {accountOverview?.passkeys.length || 0}
+              Provider: {accountOverview?.providers.length || 0}
             </p>
           </>
         )}
@@ -116,22 +104,6 @@ export function KontenVerknuepfen({
             <p className="text-xs text-muted-foreground">Keine OAuth-Provider verknuepft.</p>
           )}
 
-          {accountOverview.passkeys.map((passkey) => (
-            <div key={passkey.credentialID} className="flex items-center justify-between rounded-lg bg-secondary/35 p-2">
-              <p className="text-xs text-foreground">Passkey {passkey.credentialID.slice(0, 8)}...</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 bg-transparent border-border/50"
-                disabled={isDisconnecting || isLinking}
-                onClick={() => onRemovePasskey(passkey.credentialID)}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Entfernen
-              </Button>
-            </div>
-          ))}
         </div>
       )}
 
@@ -160,11 +132,6 @@ export function KontenVerknuepfen({
             </Button>
           )
         })}
-
-        <Button type="button" className="justify-start gap-2" onClick={onPasskeyRegister} disabled={isLinking}>
-          <KeyRound className="h-4 w-4" />
-          Passkey registrieren
-        </Button>
       </div>
     </div>
   )
