@@ -154,6 +154,15 @@ function mapOrder(table: string, order?: { column: string; ascending: boolean })
   return { [toCamel(order.column)]: order.ascending ? "asc" : "desc" }
 }
 
+function normalizeWriteData(table: string, payload: Record<string, any>) {
+  if (table === "messages" && typeof payload.gifUrl === "string" && payload.gifUrl.trim()) {
+    payload.mediaUrl = payload.gifUrl.trim()
+    payload.mediaType = "gif"
+    delete payload.gifUrl
+  }
+  return payload
+}
+
 function getModel(table: string) {
   switch (table) {
     case "profiles":
@@ -311,6 +320,7 @@ function mapRecord(table: string, record: any) {
   }
 
   if (table === "messages") {
+    output.gif_url = record.mediaType === "gif" ? record.mediaUrl : null
     output.sender = record.sender
       ? {
           id: record.sender.id,
@@ -445,6 +455,7 @@ export async function POST(req: NextRequest) {
       mappedData[toCamel(key)] = normalizeEnumInput(table, key, value)
     }
   }
+  normalizeWriteData(table, mappedData)
 
   if (action === "insert") {
     const created = await (model as any).create({ data: mappedData, include })
@@ -457,11 +468,14 @@ export async function POST(req: NextRequest) {
       const rows = payload
         .filter((row) => row && typeof row === "object")
         .map((row) =>
-          Object.fromEntries(
+          normalizeWriteData(
+            table,
+            Object.fromEntries(
             Object.entries(row as Record<string, unknown>).map(([key, value]) => [
               toCamel(key),
               normalizeEnumInput(table, key, value),
             ]),
+            ),
           ),
         )
 
@@ -477,11 +491,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid upsert payload" }, { status: 400 })
     }
 
-    const row = Object.fromEntries(
-      Object.entries(payload as Record<string, unknown>).map(([key, value]) => [
-        toCamel(key),
-        normalizeEnumInput(table, key, value),
-      ]),
+    const row = normalizeWriteData(
+      table,
+      Object.fromEntries(
+        Object.entries(payload as Record<string, unknown>).map(([key, value]) => [
+          toCamel(key),
+          normalizeEnumInput(table, key, value),
+        ]),
+      ),
     )
     const created = await (model as any).create({ data: row, include })
     return NextResponse.json({ data: mapRecord(table, created), error: null })

@@ -108,6 +108,15 @@ function mapFilters(table: string, filters: QueryFilter[]) {
   return where
 }
 
+function normalizeWriteData(table: string, payload: Record<string, any>) {
+  if (table === "messages" && typeof payload.gifUrl === "string" && payload.gifUrl.trim()) {
+    payload.mediaUrl = payload.gifUrl.trim()
+    payload.mediaType = "gif"
+    delete payload.gifUrl
+  }
+  return payload
+}
+
 function getModel(table: string) {
   switch (table) {
     case "profiles":
@@ -256,6 +265,10 @@ function mapRecord(table: string, record: any) {
       : null
   }
 
+  if (table === "messages") {
+    output.gif_url = record.mediaType === "gif" ? record.mediaUrl : null
+  }
+
   if (table === "automations") {
     output.bots = record.bot ?? null
   }
@@ -351,6 +364,7 @@ class QueryBuilder {
         mappedData[toCamel(key)] = normalizeEnumInput(this.state.table, key, value)
       }
     }
+    normalizeWriteData(this.state.table, mappedData)
 
     if (action === "insert") {
       const created = await (model as any).create({ data: mappedData, include })

@@ -165,9 +165,6 @@ function normalizeLegacyContent(value: string | null | undefined) {
   return value
 }
 
-// Tenor GIF API
-const TENOR_API_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY
-
 export function MessagesContent({ currentUserId, targetUserId }: { currentUserId: string; targetUserId?: string }) {
   const supabase = useMemo(() => createDbClient(), [])
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -199,7 +196,6 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   const conversationsLoadingRef = useRef(false)
   const requestsLoadingRef = useRef(false)
   const messagesLoadingRef = useRef(false)
-  const tenorWarningShownRef = useRef(false)
   const searchRequestIdRef = useRef(0)
 
   const scrollToBottom = () => {
@@ -599,30 +595,14 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
 
   // Search GIFs
   const searchGifs = useCallback(async (query: string) => {
-    if (!TENOR_API_KEY) {
+    const res = await fetch(`/api/gifs/search?q=${encodeURIComponent(query)}`, { cache: "no-store" })
+    const data = await res.json().catch(() => ({ results: [] }))
+    if (!res.ok) {
       setGifs([])
-      if (!tenorWarningShownRef.current) {
-        toast.error("GIF-Suche ist nicht konfiguriert")
-        tenorWarningShownRef.current = true
-      }
+      toast.error("GIF-Suche ist momentan nicht verfuegbar")
       return
     }
-
-    if (!query) {
-      // Load trending GIFs
-      const res = await fetch(
-        `https://tenor.googleapis.com/v2/featured?key=${TENOR_API_KEY}&limit=20&media_filter=gif,tinygif`
-      )
-      const data = await res.json()
-      setGifs(data.results || [])
-      return
-    }
-
-    const res = await fetch(
-      `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&key=${TENOR_API_KEY}&limit=20&media_filter=gif,tinygif`
-    )
-    const data = await res.json()
-    setGifs(data.results || [])
+    setGifs(Array.isArray(data?.results) ? data.results : [])
   }, [])
 
   useEffect(() => {
@@ -1361,4 +1341,3 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
     </div>
   )
 }
-
