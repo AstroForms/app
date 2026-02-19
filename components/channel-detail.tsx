@@ -633,7 +633,21 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const [isUploadingIcon, setIsUploadingIcon] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  
+  const [channelName, setChannelName] = useState(channel.name)
+  const [channelDescription, setChannelDescription] = useState(channel.description || "")
+  const [channelIsPublic, setChannelIsPublic] = useState(channel.is_public ?? true)
+  const [settingsName, setSettingsName] = useState(channel.name)
+  const [settingsDescription, setSettingsDescription] = useState(channel.description || "")
+  const [settingsIsPublic, setSettingsIsPublic] = useState(channel.is_public ?? true)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [boostedUntil, setBoostedUntil] = useState<string | null>(channel.boosted_until || null)
+  const [hasPendingPromotionRequest, setHasPendingPromotionRequest] = useState<boolean>(
+    !!channel.has_pending_promotion_request,
+  )
+  const [showPromoteDialog, setShowPromoteDialog] = useState(false)
+  const [isPromotingChannel, setIsPromotingChannel] = useState(false)
+  const [profileXp, setProfileXp] = useState<number | null>(null)
+
   // Post media states
   const [postImageUrl, setPostImageUrl] = useState("")
   const [postLinkUrl, setPostLinkUrl] = useState("")
@@ -642,17 +656,17 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
   const [gifSearch, setGifSearch] = useState("")
   const [gifs, setGifs] = useState<Array<{ id: string; url: string; preview: string }>>([])
   const [isLoadingGifs, setIsLoadingGifs] = useState(false)
-  
+
   // Cropper states
   const [cropperOpen, setCropperOpen] = useState(false)
   const [cropperImageSrc, setCropperImageSrc] = useState("")
   const [cropperType, setCropperType] = useState<"icon" | "banner" | "post">("icon")
-  
+
   // Channel report states
   const [showChannelReportDialog, setShowChannelReportDialog] = useState(false)
   const [channelReportReason, setChannelReportReason] = useState("")
   const [channelReportDetails, setChannelReportDetails] = useState("")
-  
+
   const iconInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
   const postImageInputRef = useRef<HTMLInputElement>(null)
