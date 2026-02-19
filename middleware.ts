@@ -2,7 +2,8 @@ export const runtime = "nodejs" // Required for NextAuth and crypto
 import { auth } from "@/lib/auth"
 import { NextResponse, type NextRequest } from "next/server"
 import { isUserCurrentlyBanned } from "@/lib/bans"
-import { TWO_FACTOR_COOKIE_NAME, verifyTwoFactorProofValue } from "@/lib/two-factor"
+import { TWO_FACTOR_COOKIE_NAME } from "@/lib/two-factor"
+import { verifyTwoFactorProofValueEdge } from "@/lib/two-factor-edge"
 
 // Protected routes that require authentication
 const protectedRoutes = [
@@ -29,7 +30,7 @@ export default auth(async (req) => {
   const twoFactorEnabled = req.auth?.user?.twoFactorEnabled === true
   const hasTwoFactorProof =
     !!sessionUserId &&
-    verifyTwoFactorProofValue(req.cookies.get(TWO_FACTOR_COOKIE_NAME)?.value, sessionUserId)
+    (await verifyTwoFactorProofValueEdge(req.cookies.get(TWO_FACTOR_COOKIE_NAME)?.value, sessionUserId))
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     nextUrl.pathname.startsWith(route)
