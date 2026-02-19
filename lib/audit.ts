@@ -65,26 +65,54 @@ export async function listAuditLogs(limit = 100) {
   await ensureAuditTables()
   const cappedLimit = Math.min(Math.max(Math.trunc(limit), 1), 500)
 
-  const rows = await prisma.$queryRaw<(Omit<AuditLogItem, "created_at"> & { created_at: Date | string })[]>`
+  const rows = await prisma.$queryRaw<
+    Array<{
+      id: string
+      created_at: Date | string
+      actor_id: string
+      action: string
+      target_user_id: string | null
+      details: string | null
+    }>
+  >`
     SELECT
       l.\`id\`,
       l.\`created_at\`,
       l.\`actor_id\`,
       l.\`action\`,
       l.\`target_user_id\`,
-      l.\`details\`,
-      a.\`username\` AS actor_username,
-      t.\`username\` AS target_username
+      l.\`details\`
     FROM \`admin_audit_logs\` l
-    LEFT JOIN \`profiles\` a ON a.\`id\` = l.\`actor_id\`
-    LEFT JOIN \`profiles\` t ON t.\`id\` = l.\`target_user_id\`
     ORDER BY l.\`created_at\` DESC
     LIMIT ${cappedLimit}
   `
 
+  const profileIds = Array.from(
+    new Set(
+      rows.flatMap((row) =>
+        [row.actor_id, row.target_user_id].filter((value): value is string => Boolean(value)),
+      ),
+    ),
+  )
+
+  const profiles = profileIds.length
+    ? await prisma.profile.findMany({
+        where: { id: { in: profileIds } },
+        select: { id: true, username: true },
+      })
+    : []
+
+  const usernameById = new Map(profiles.map((p) => [p.id, p.username]))
+
   return rows.map((row) => ({
-    ...row,
+    id: row.id,
     created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    actor_id: row.actor_id,
+    actor_username: usernameById.get(row.actor_id) || null,
+    action: row.action,
+    target_user_id: row.target_user_id,
+    target_username: row.target_user_id ? usernameById.get(row.target_user_id) || null : null,
+    details: row.details,
   }))
 }
 
@@ -158,20 +186,26 @@ export async function createAuditLog(input: AuditLogInput) {
     )
   `
 
-  const usernames = await prisma.$queryRaw<{ actor_username: string | null; target_username: string | null }[]>`
-    SELECT
-      (SELECT \`username\` FROM \`profiles\` WHERE \`id\` = ${input.actorId} LIMIT 1) AS actor_username,
-      (SELECT \`username\` FROM \`profiles\` WHERE \`id\` = ${input.targetUserId || null} LIMIT 1) AS target_username
-  `
+  const [actorProfile, targetProfile] = await Promise.all([
+    prisma.profile.findUnique({
+      where: { id: input.actorId },
+      select: { username: true },
+    }),
+    input.targetUserId
+      ? prisma.profile.findUnique({
+          where: { id: input.targetUserId },
+          select: { username: true },
+        })
+      : Promise.resolve(null),
+  ])
 
-  const resolved = usernames[0] || { actor_username: null, target_username: null }
   await sendAuditToDiscord({
     createdAt,
     action: input.action,
     actorId: input.actorId,
-    actorUsername: resolved.actor_username,
+    actorUsername: actorProfile?.username || null,
     targetUserId: input.targetUserId || null,
-    targetUsername: resolved.target_username,
+    targetUsername: targetProfile?.username || null,
     details,
   })
 }
