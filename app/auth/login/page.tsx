@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Rocket, Github, KeyRound } from "lucide-react"
 
@@ -46,7 +46,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   const mapAuthError = (value: string | null | undefined) => {
     if (!value) return null
@@ -67,11 +66,12 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    const incomingError = searchParams.get("error")
+    if (typeof window === "undefined") return
+    const incomingError = new URLSearchParams(window.location.search).get("error")
     if (incomingError) {
       setError(mapAuthError(incomingError))
     }
-  }, [searchParams])
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
