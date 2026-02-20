@@ -63,14 +63,18 @@ async function isBannedSafe(userId: string) {
 }
 
 async function resolveUserIdFromAuthCandidate(user: { id?: string | null; email?: string | null }) {
-  if (user.id) return user.id
-  if (!user.email) return null
+  try {
+    if (user.id) return user.id
+    if (!user.email) return null
 
-  const existing = await prisma.user.findUnique({
-    where: { email: user.email },
-    select: { id: true },
-  })
-  return existing?.id ?? null
+    const existing = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: { id: true },
+    })
+    return existing?.id ?? null
+  } catch {
+    return null
+  }
 }
 
 async function getTwoFactorEnabled(userId: string) {
@@ -137,66 +141,70 @@ providers.push(
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return slowAuthFailure()
-        }
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            return slowAuthFailure()
+          }
 
-        const identifier = String(credentials.email).trim()
-        const plainPassword = String(credentials.password)
-        if (!identifier || !plainPassword) {
-          return slowAuthFailure()
-        }
+          const identifier = String(credentials.email).trim()
+          const plainPassword = String(credentials.password)
+          if (!identifier || !plainPassword) {
+            return slowAuthFailure()
+          }
 
-        let user = await prisma.user.findUnique({
-          where: { email: identifier },
-          include: { profile: true },
-        })
-
-        // Fallback: allow login by profile username.
-        if (!user) {
-          const profile = await prisma.profile.findUnique({
-            where: { username: identifier },
-            select: {
-              user: {
-                include: { profile: true },
-              },
-            },
-          })
-          user = profile?.user ?? null
-        }
-
-        // Backward compatibility: older registrations stored the entered username in users.name.
-        if (!user) {
-          user = await prisma.user.findFirst({
-            where: { name: identifier },
+          let user = await prisma.user.findUnique({
+            where: { email: identifier },
             include: { profile: true },
           })
-        }
 
-        if (!user) {
+          // Fallback: allow login by profile username.
+          if (!user) {
+            const profile = await prisma.profile.findUnique({
+              where: { username: identifier },
+              select: {
+                user: {
+                  include: { profile: true },
+                },
+              },
+            })
+            user = profile?.user ?? null
+          }
+
+          // Backward compatibility: older registrations stored the entered username in users.name.
+          if (!user) {
+            user = await prisma.user.findFirst({
+              where: { name: identifier },
+              include: { profile: true },
+            })
+          }
+
+          if (!user) {
+            return slowAuthFailure()
+          }
+
+          if (!user.password) {
+            return slowAuthFailure()
+          }
+
+          const isValid = await bcrypt.compare(
+            plainPassword,
+            user.password,
+          )
+          if (!isValid) {
+            return slowAuthFailure()
+          }
+
+          const isBanned = await isBannedSafe(user.id)
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            banned: isBanned,
+          }
+        } catch {
           return slowAuthFailure()
-        }
-
-        if (!user.password) {
-          return slowAuthFailure()
-        }
-
-        const isValid = await bcrypt.compare(
-          plainPassword,
-          user.password,
-        )
-        if (!isValid) {
-          return slowAuthFailure()
-        }
-
-        const isBanned = await isBannedSafe(user.id)
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          banned: isBanned,
         }
       },
     }),
@@ -338,41 +346,49 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session
     },
     async signIn({ user }) {
-      if ((user as { banned?: boolean } | null)?.banned) {
-        return "/auth/login?error=AccountBanned"
-      }
+      try {
+        if ((user as { banned?: boolean } | null)?.banned) {
+          return "/auth/login?error=AccountBanned"
+        }
 
-      const userId = await resolveUserIdFromAuthCandidate({ id: user.id, email: user.email })
-      if (!userId) return false
-      if (await isBannedSafe(userId)) {
-        return "/auth/login?error=AccountBanned"
+        const userId = await resolveUserIdFromAuthCandidate({ id: user.id, email: user.email })
+        if (!userId) return false
+        if (await isBannedSafe(userId)) {
+          return "/auth/login?error=AccountBanned"
+        }
+        return true
+      } catch {
+        return false
       }
-      return true
     },
   },
   events: {
     async createUser({ user }) {
-      if (!user?.id) return
-      const existingProfile = await prisma.profile.findUnique({
-        where: { id: user.id },
-      })
-      if (existingProfile) return
-      const baseUsername = (user.email?.split("@")[0] || `user_${Date.now()}`).toLowerCase().replace(/[^a-z0-9_]/g, "")
-      let candidate = baseUsername || `user_${Date.now()}`
-      let suffix = 0
-      // ensure unique username by appending numbers
-      while (await prisma.profile.findUnique({ where: { username: candidate } })) {
-        suffix += 1
-        candidate = `${baseUsername}${suffix}`
+      try {
+        if (!user?.id) return
+        const existingProfile = await prisma.profile.findUnique({
+          where: { id: user.id },
+        })
+        if (existingProfile) return
+        const baseUsername = (user.email?.split("@")[0] || `user_${Date.now()}`).toLowerCase().replace(/[^a-z0-9_]/g, "")
+        let candidate = baseUsername || `user_${Date.now()}`
+        let suffix = 0
+        // ensure unique username by appending numbers
+        while (await prisma.profile.findUnique({ where: { username: candidate } })) {
+          suffix += 1
+          candidate = `${baseUsername}${suffix}`
+        }
+        await prisma.profile.create({
+          data: {
+            id: user.id,
+            username: candidate,
+            displayName: user.name || user.email?.split("@")[0],
+            avatarUrl: user.image,
+          },
+        })
+      } catch (error) {
+        console.error("[auth] createUser event failed:", error)
       }
-      await prisma.profile.create({
-        data: {
-          id: user.id,
-          username: candidate,
-          displayName: user.name || user.email?.split("@")[0],
-          avatarUrl: user.image,
-        },
-      })
     },
   },
   pages: {
