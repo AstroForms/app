@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Star, Zap, UserPlus, UserMinus, Crown, Shield, ShieldCheck,
-  BadgeCheck, Bot, Settings, Hash, Heart, MessageCircle, Share2, Bookmark, Repeat2, Send, Trash2, ExternalLink, Clock, Lock, MoreVertical, Ban, Flag
+  BadgeCheck, Bot, Settings, Hash, Heart, MessageCircle, Share2, Bookmark, Repeat2, Send, Trash2, ExternalLink, Clock, Lock, MoreVertical, Ban, Flag, Smile
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -393,27 +393,55 @@ function ProfilePostItem({
               </div>
               <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap">{comment.content}</p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                {COMMENT_REACTION_EMOJIS.map((emoji) => {
-                  const count = reactions[emoji] || 0
-                  const active = myReactions.includes(emoji)
-                  return (
+                {Object.entries(reactions)
+                  .filter(([, count]) => count > 0)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([emoji, count]) => (
                     <Button
                       key={`${comment.id}-${emoji}`}
                       variant="ghost"
                       size="sm"
-                      className={`h-7 rounded-full px-2.5 text-xs ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`h-6 rounded-full px-2 text-xs ${
+                        myReactions.includes(emoji) ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                      }`}
                       disabled={isReactingCommentId === comment.id}
                       onClick={() => handleToggleCommentReaction(comment.id, emoji)}
                     >
                       <span>{emoji}</span>
-                      {count > 0 && <span>{count}</span>}
+                      <span>{count}</span>
                     </Button>
-                  )
-                })}
+                  ))}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 rounded-full px-2 text-xs text-muted-foreground hover:text-foreground"
+                      disabled={isReactingCommentId === comment.id}
+                    >
+                      <Smile className="h-3.5 w-3.5 mr-1" /> Reagieren
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="bg-card border-border/30 p-1.5">
+                    <div className="flex items-center gap-1">
+                      {COMMENT_REACTION_EMOJIS.map((emoji) => (
+                        <Button
+                          key={`${comment.id}-picker-${emoji}`}
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => handleToggleCommentReaction(comment.id, emoji)}
+                        >
+                          {emoji}
+                        </Button>
+                      ))}
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 rounded-full px-3 text-xs text-muted-foreground hover:text-foreground"
+                  className="h-6 rounded-full px-2.5 text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => setReplyingToCommentId((current) => current === comment.id ? null : comment.id)}
                 >
                   Antworten
