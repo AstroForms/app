@@ -143,3 +143,79 @@ export async function listRecentBans(limit = 50) {
     throw error
   }
 }
+
+export async function listActiveBans(limit = 50) {
+  try {
+    await ensureBansTable()
+    const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 500)
+
+    const rows = await prisma.$queryRaw<
+      Array<{
+        id: string
+        user_id: string
+        reason: string | null
+        is_global: number | boolean
+        banned_until: Date | string | null
+        created_at: Date | string
+      }>
+    >`
+      SELECT
+        b.\`id\`,
+        b.\`user_id\`,
+        b.\`reason\`,
+        b.\`is_global\`,
+        b.\`banned_until\`,
+        b.\`created_at\`
+      FROM \`bans\` b
+      WHERE b.\`banned_until\` IS NULL OR b.\`banned_until\` > NOW()
+      ORDER BY b.\`created_at\` DESC
+      LIMIT ${safeLimit}
+    `
+
+    const ids = rows.map((row) => row.user_id)
+    const usernames = new Map<string, string>()
+
+    if (ids.length > 0) {
+      try {
+        const profiles = await prisma.profile.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, username: true },
+        })
+        for (const profile of profiles) {
+          usernames.set(profile.id, profile.username || "unknown")
+        }
+      } catch {
+        // If profile lookup fails, keep fallback username below.
+      }
+    }
+
+    return rows.map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      reason: row.reason,
+      is_global: Boolean(row.is_global),
+      banned_until:
+        row.banned_until instanceof Date
+          ? row.banned_until.toISOString()
+          : row.banned_until
+            ? String(row.banned_until)
+            : null,
+      created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+      profiles: { username: usernames.get(row.user_id) || "unknown" },
+    }))
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : ""
+    const isRecoverable =
+      message.includes("access denied") ||
+      message.includes("permission denied") ||
+      message.includes("denied to user") ||
+      message.includes("command denied") ||
+      message.includes("doesn't exist") ||
+      message.includes("does not exist") ||
+      message.includes("no such table") ||
+      message.includes("unknown column")
+
+    if (isRecoverable) return []
+    throw error
+  }
+}

@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { AdminContent } from "@/components/admin-content"
-import { listRecentBans } from "@/lib/bans"
+import { listActiveBans } from "@/lib/bans"
 
 export default async function AdminPage() {
   try {
@@ -68,7 +68,7 @@ export default async function AdminPage() {
       }
     })()
 
-    const bans = await listRecentBans(50).catch(() => [])
+    const bans = await listActiveBans(50).catch(() => [])
     const promotionRequests: Array<{
       id: string
       channel_id: string
