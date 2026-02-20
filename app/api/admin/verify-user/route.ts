@@ -23,51 +23,43 @@ async function requireAdmin() {
   return { meId: userId, error: null }
 }
 
-async function ensureIsVerifiedColumn() {
-  try {
-    await prisma.$executeRawUnsafe(
-      "ALTER TABLE `profiles` ADD COLUMN `is_verified` TINYINT(1) NOT NULL DEFAULT 0",
-    )
-  } catch (error) {
-    const message = error instanceof Error ? error.message.toLowerCase() : ""
-    const alreadyExists =
-      message.includes("duplicate column") ||
-      message.includes("already exists") ||
-      message.includes("duplicate")
-    if (!alreadyExists) throw error
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
     const { meId, error } = await requireAdmin()
     if (error) return error
 
-    const { id } = await req.json()
+    const { id, verified } = await req.json()
     const profileId = typeof id === "string" ? id.trim() : ""
+    const shouldVerify = typeof verified === "boolean" ? verified : true
     if (!profileId) {
       return NextResponse.json({ success: false, error: "No user id" }, { status: 400 })
     }
 
-    await ensureIsVerifiedColumn()
-
-    const updatedCount = await prisma.$executeRaw`
-      UPDATE \`profiles\`
-      SET \`is_verified\` = 1
-      WHERE \`id\` = ${profileId}
-    `
-
-    if (!updatedCount) {
+    const target = await prisma.profile.findUnique({
+      where: { id: profileId },
+      select: { id: true, username: true, isVerified: true },
+    })
+    if (!target) {
       return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
     }
 
-    await createAuditLog({
-      actorId: meId!,
-      action: "verify_user",
-      targetUserId: profileId,
+    if (target.isVerified === shouldVerify) {
+      return NextResponse.json({ success: true, alreadySet: true, verified: target.isVerified })
+    }
+
+    await prisma.profile.update({
+      where: { id: profileId },
+      data: { isVerified: shouldVerify },
     })
 
-    return NextResponse.json({ success: true })
+    await createAuditLog({
+      actorId: meId!,
+      action: shouldVerify ? "verify_user" : "unverify_user",
+      targetUserId: profileId,
+      details: target.username ? `target=@${target.username}` : undefined,
+    })
+
+    return NextResponse.json({ success: true, verified: shouldVerify })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Verification failed"
     return NextResponse.json({ success: false, error: message }, { status: 500 })

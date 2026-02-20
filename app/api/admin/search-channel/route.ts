@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
         description: true,
         isPublic: true,
         isVerified: true,
+        isLocked: true,
         memberCount: true,
         createdAt: true,
         owner: {
@@ -73,6 +74,7 @@ export async function GET(req: NextRequest) {
         description: channel.description,
         isPublic: channel.isPublic,
         isVerified: channel.isVerified,
+        isLocked: channel.isLocked,
         memberCount: channel.memberCount,
         createdAt: channel.createdAt.toISOString(),
         ownerId: channel.owner.id,

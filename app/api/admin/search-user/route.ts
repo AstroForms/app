@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
         username: true,
         displayName: true,
         role: true,
+        isVerified: true,
       },
       orderBy: {
         username: "asc",
@@ -65,6 +66,7 @@ export async function GET(req: NextRequest) {
           username: user.username ?? "",
           displayName: user.displayName,
           role: user.role,
+          isVerified: user.isVerified,
         })),
     })
   } catch (error) {

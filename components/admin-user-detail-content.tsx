@@ -17,6 +17,7 @@ type TargetUser = {
   email: string
   name: string
   role: string
+  isVerified: boolean
   createdAt: string
   avatarUrl: string | null
 }
@@ -24,6 +25,7 @@ type TargetUser = {
 export function AdminUserDetailContent({ targetUser }: { targetUser: TargetUser }) {
   const router = useRouter()
   const [role, setRole] = useState(targetUser.role)
+  const [isVerified, setIsVerified] = useState(targetUser.isVerified)
   const [banReason, setBanReason] = useState("")
   const [banDuration, setBanDuration] = useState("permanent")
   const [isLoading, setIsLoading] = useState(false)
@@ -51,8 +53,16 @@ export function AdminUserDetailContent({ targetUser }: { targetUser: TargetUser 
     }
   }
 
-  const handleVerify = async () => {
-    await runAction("/api/admin/verify-user", { id: targetUser.id }, "Nutzer verifiziert.")
+  const handleToggleVerify = async () => {
+    const desired = !isVerified
+    const data = await runAction(
+      "/api/admin/verify-user",
+      { id: targetUser.id, verified: desired },
+      desired ? "Nutzer verifiziert." : "Verifizierung entfernt.",
+    )
+    if (data?.success) {
+      setIsVerified(desired)
+    }
   }
 
   const handleGrantAdmin = async () => {
@@ -108,6 +118,7 @@ export function AdminUserDetailContent({ targetUser }: { targetUser: TargetUser 
         <p className="text-sm text-muted-foreground">Name: {targetUser.displayName || targetUser.name || "-"}</p>
         <p className="text-sm text-muted-foreground">E-Mail: {targetUser.email || "-"}</p>
         <p className="text-sm text-muted-foreground">Rolle: {role}</p>
+        <p className="text-sm text-muted-foreground">Verifiziert: {isVerified ? "ja" : "nein"}</p>
         <p className="text-sm text-muted-foreground">
           Erstellt am: {new Date(targetUser.createdAt).toLocaleDateString("de-DE")}
         </p>
@@ -116,8 +127,8 @@ export function AdminUserDetailContent({ targetUser }: { targetUser: TargetUser 
       <div className="glass rounded-xl p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4">Rollen & Verifizierung</h2>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={handleVerify} disabled={isLoading}>
-            <BadgeCheck className="h-4 w-4 mr-2" /> Verifizieren
+          <Button onClick={handleToggleVerify} disabled={isLoading} variant={isVerified ? "outline" : "default"} className={isVerified ? "bg-transparent" : ""}>
+            <BadgeCheck className="h-4 w-4 mr-2" /> {isVerified ? "Verifizierung entfernen" : "Verifizieren"}
           </Button>
           <Button onClick={handleGrantAdmin} disabled={isLoading || role === "admin" || role === "owner"} variant="secondary">
             <Shield className="h-4 w-4 mr-2" /> Admin geben

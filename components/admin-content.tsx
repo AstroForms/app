@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { createDbClient } from "@/lib/db-client"
 import { Button } from "@/components/ui/button"
@@ -28,10 +28,16 @@ interface Report {
   target_type: string
   target_id: string
   reason: string
+  priority?: "low" | "medium" | "high" | "critical"
+  queue_status?: "pending" | "triaged" | "escalated" | "resolved" | "dismissed"
+  assigned_to?: string | null
+  severity_score?: number
   status: string
   details?: string | null
   admin_notes?: string | null
+  resolution_action?: string | null
   created_at: string
+  reviewed_at?: string | null
   profiles: { username: string }
 }
 
@@ -94,6 +100,7 @@ type AdminChannel = {
   description: string | null
   isPublic: boolean
   isVerified: boolean
+  isLocked?: boolean
   memberCount: number
   createdAt: string
   ownerId: string
@@ -133,6 +140,7 @@ export function AdminContent({
     username: string
     displayName?: string
     role?: string
+    isVerified?: boolean
   }
   const [userSearchResults, setUserSearchResults] = useState<User[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
@@ -166,20 +174,20 @@ export function AdminContent({
     router.refresh()
   }
 
-  const verifyUser = async (profileId: string) => {
+  const verifyUser = async (profileId: string, isVerified?: boolean) => {
     if (!profileId.trim()) return
     try {
       const res = await fetch("/api/admin/verify-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: profileId })
+        body: JSON.stringify({ id: profileId, verified: !isVerified })
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) {
         throw new Error(data?.error || "Fehler beim Verifizieren")
       }
       if (data?.success) {
-        toast.success("Nutzer verifiziert!")
+        toast.success(data?.verified ? "Nutzer verifiziert!" : "Verifizierung entfernt!")
         await loadUsers()
         router.refresh()
       } else {
@@ -359,19 +367,38 @@ export function AdminContent({
     }
   }
 
-  const resolveReport = async (reportId: string, status: "resolved" | "dismissed") => {
-    const supabase = createDbClient()
-    await supabase
-      .from("reports")
-      .update({
-        status,
-        reviewed_by: userId,
-        reviewed_at: new Date().toISOString(),
-        admin_notes: modReason || null,
-      })
-      .eq("id", reportId)
-    toast.success(`Report ${status === "resolved" ? "aufgelöst" : "abgelehnt"}`)
+  const runReportAction = async (
+    reportId: string,
+    action: string,
+    options?: { notes?: string; priority?: string; duration?: string; silent?: boolean },
+  ) => {
+    const res = await fetch("/api/admin/reports/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reportId,
+        action,
+        notes: options?.notes || null,
+        priority: options?.priority || null,
+        duration: options?.duration || null,
+      }),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok || !data?.success) {
+      throw new Error(data?.error || "Report-Aktion fehlgeschlagen")
+    }
+    if (!options?.silent) {
+      toast.success("Report-Aktion durchgeführt")
+    }
     router.refresh()
+  }
+
+  const resolveReport = async (reportId: string, status: "resolved" | "dismissed") => {
+    try {
+      await runReportAction(reportId, status === "resolved" ? "resolve" : "dismiss", { notes: modReason || undefined })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Report-Aktion fehlgeschlagen")
+    }
   }
 
   const banUserById = async (targetUserId: string, reason: string, duration: string) => {
@@ -390,76 +417,68 @@ export function AdminContent({
     setSelectedReport(report)
     if (report.target_type === "channel") {
       setShowChannelModDialog(true)
-    } else if (report.target_type === "user" || report.target_type === "post") {
+    } else if (["user", "post", "comment", "message"].includes(report.target_type)) {
       setShowUserModDialog(true)
     }
   }
 
-  const handleChannelModAction = async (action: "lock_channel" | "ban_owner" | "lock_and_ban") => {
+  const handleChannelModAction = async (action: "lock_channel" | "ban_owner" | "lock_and_ban" | "verify_channel") => {
     if (!selectedReport) return
-    const supabase = createDbClient()
-    
-    // Get channel info
-    const { data: channel } = await supabase
-      .from("channels")
-      .select("owner_id")
-      .eq("id", selectedReport.target_id)
-      .single()
-    const channelRow = channel as { owner_id?: string } | null
+    try {
+      if (action === "lock_channel") {
+        await runReportAction(selectedReport.id, "lock_channel", { notes: modReason || undefined })
+      } else if (action === "ban_owner") {
+        await runReportAction(selectedReport.id, "ban_user_permanent", { notes: modReason || undefined })
+      } else if (action === "verify_channel") {
+        await runReportAction(selectedReport.id, "verify_channel", { notes: modReason || undefined })
+      } else {
+        await runReportAction(selectedReport.id, "lock_channel", { notes: modReason || undefined, silent: true })
+        await runReportAction(selectedReport.id, "ban_user_permanent", { notes: modReason || undefined, silent: true })
+        toast.success("Channel gesperrt und Owner gebannt")
+      }
 
-    if (action === "lock_channel" || action === "lock_and_ban") {
-      await supabase.from("channels").update({ is_locked: true }).eq("id", selectedReport.target_id)
-      toast.success("Channel gesperrt!")
+      setShowChannelModDialog(false)
+      setSelectedReport(null)
+      setModReason("")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Aktion fehlgeschlagen")
     }
-
-    if ((action === "ban_owner" || action === "lock_and_ban") && channelRow?.owner_id) {
-      await banUserById(channelRow.owner_id, modReason || "Channel-Report", "permanent")
-      toast.success("Owner gebannt!")
-    }
-
-    await resolveReport(selectedReport.id, "resolved")
-    setShowChannelModDialog(false)
-    setSelectedReport(null)
-    setModReason("")
   }
 
   const handleUserModAction = async () => {
     if (!selectedReport || !userModAction) return
-    const supabase = createDbClient()
-    
-    // Get user ID from post if needed
-    let targetUserId = selectedReport.target_id
-    if (selectedReport.target_type === "post") {
-      const { data: post } = await supabase
-        .from("posts")
-        .select("user_id")
-        .eq("id", selectedReport.target_id)
-        .single()
-      const postRow = post as { user_id?: string } | null
-      if (postRow?.user_id) targetUserId = postRow.user_id
-    }
+    try {
+      if (userModAction === "temp_ban") {
+        const duration = ["1h", "6h", "1d", "3d", "7d", "30d"].includes(userModDuration) ? userModDuration : "1d"
+        await runReportAction(selectedReport.id, "ban_user_temp", { notes: modReason || undefined, duration })
+      } else if (userModAction === "perma_ban") {
+        await runReportAction(selectedReport.id, "ban_user_permanent", { notes: modReason || undefined })
+      } else if (userModAction === "verify_user") {
+        await runReportAction(selectedReport.id, "verify_user", { notes: modReason || undefined })
+      } else if (userModAction === "delete_post") {
+        await runReportAction(selectedReport.id, "delete_post", { notes: modReason || undefined })
+      } else if (userModAction === "delete_comment") {
+        await runReportAction(selectedReport.id, "delete_comment", { notes: modReason || undefined })
+      } else if (userModAction === "delete_message") {
+        await runReportAction(selectedReport.id, "delete_message", { notes: modReason || undefined })
+      } else if (userModAction === "resolve_only") {
+        await runReportAction(selectedReport.id, "resolve", { notes: modReason || undefined })
+      }
 
-    if (userModAction === "temp_ban") {
-      const duration = ["1h", "6h", "1d", "3d", "7d", "30d"].includes(userModDuration) ? userModDuration : "1d"
-      await banUserById(targetUserId, modReason || "Temporarer Ban", duration)
-      toast.success(`Nutzer für ${duration} gebannt!`)
-    } else if (userModAction === "perma_ban") {
-      await banUserById(targetUserId, modReason || "Permanenter Ban", "permanent")
-      toast.success("Nutzer permanent gebannt!")
+      setShowUserModDialog(false)
+      setSelectedReport(null)
+      setModReason("")
+      setUserModAction("")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Aktion fehlgeschlagen")
     }
-
-    await resolveReport(selectedReport.id, "resolved")
-    setShowUserModDialog(false)
-    setSelectedReport(null)
-    setModReason("")
-    setUserModAction("")
   }
 
   const handleBan = async () => {
     if (!banUserId.trim()) return
     try {
       await banUserById(banUserId, banReason || "", banDuration)
-      toast.success(banDuration === "permanent" ? "Nutzer permanent gebannt" : `Nutzer für ${banDuration} gebannt`)
+      toast.success(banDuration === "permanent" ? "Nutzer permanent gebannt" : `Nutzer fÃ¼r ${banDuration} gebannt`)
       setBanUserId("")
       setBanReason("")
       setBanDuration("permanent")
@@ -490,7 +509,7 @@ export function AdminContent({
 
   const deleteChannel = async (channel: AdminChannel) => {
     const confirmed = window.confirm(
-      `Channel #${channel.name} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
+      `Channel #${channel.name} wirklich lÃ¶schen? Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden.`,
     )
     if (!confirmed) return
 
@@ -502,13 +521,13 @@ export function AdminContent({
       })
       const data = await res.json().catch(() => null)
       if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Channel konnte nicht gelöscht werden")
+        throw new Error(data?.error || "Channel konnte nicht gelÃ¶scht werden")
       }
-      toast.success("Channel gelöscht")
+      toast.success("Channel gelÃ¶scht")
       await loadChannels()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Channel konnte nicht gelöscht werden")
+      toast.error(error instanceof Error ? error.message : "Channel konnte nicht gelÃ¶scht werden")
     }
   }
 
@@ -578,7 +597,7 @@ export function AdminContent({
               <Textarea 
                 value={modReason} 
                 onChange={(e) => setModReason(e.target.value)} 
-                placeholder="Grund für die Aktion..." 
+                placeholder="Grund fÃ¼r die Aktion..." 
                 className="bg-secondary/50 border-border/50" 
               />
             </div>
@@ -596,6 +615,13 @@ export function AdminContent({
                 className="justify-start bg-transparent text-foreground border-border/50"
               >
                 <Ban className="h-4 w-4 mr-2" /> Owner bannen
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleChannelModAction("verify_channel")}
+                className="justify-start bg-transparent text-foreground border-border/50"
+              >
+                <BadgeCheck className="h-4 w-4 mr-2" /> Channel verifizieren
               </Button>
               <Button 
                 variant="destructive" 
@@ -625,14 +651,25 @@ export function AdminContent({
           </DialogHeader>
           <div className="flex flex-col gap-4 mt-4">
             <div className="grid gap-2">
-              <Label className="text-foreground">Aktion auswählen</Label>
+              <Label className="text-foreground">Aktion auswÃ¤hlen</Label>
               <Select value={userModAction} onValueChange={setUserModAction}>
                 <SelectTrigger className="bg-secondary/50 border-border/50">
-                  <SelectValue placeholder="Aktion wählen..." />
+                  <SelectValue placeholder="Aktion wÃ¤hlen..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="temp_ban">Temporär bannen</SelectItem>
                   <SelectItem value="perma_ban">Permanent bannen</SelectItem>
+                  <SelectItem value="verify_user">Nutzer verifizieren</SelectItem>
+                  {selectedReport?.target_type === "post" && (
+                    <SelectItem value="delete_post">Post löschen</SelectItem>
+                  )}
+                  {selectedReport?.target_type === "comment" && (
+                    <SelectItem value="delete_comment">Kommentar löschen</SelectItem>
+                  )}
+                  {selectedReport?.target_type === "message" && (
+                    <SelectItem value="delete_message">Nachricht entfernen</SelectItem>
+                  )}
+                  <SelectItem value="resolve_only">Nur als gelöst markieren</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -661,7 +698,7 @@ export function AdminContent({
               <Textarea 
                 value={modReason} 
                 onChange={(e) => setModReason(e.target.value)} 
-                placeholder="Grund für die Aktion..." 
+                placeholder="Grund fÃ¼r die Aktion..." 
                 className="bg-secondary/50 border-border/50" 
               />
             </div>
@@ -671,7 +708,7 @@ export function AdminContent({
               Abbrechen
             </Button>
             <Button onClick={handleUserModAction} disabled={!userModAction} variant={userModAction === "perma_ban" ? "destructive" : "default"}>
-              Ausführen
+              AusfÃ¼hren
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -758,6 +795,16 @@ export function AdminContent({
                           {report.status}
                         </span>
                         <span className="text-xs text-muted-foreground capitalize">{report.target_type}</span>
+                        {report.priority ? (
+                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary uppercase">
+                            {report.priority}
+                          </span>
+                        ) : null}
+                        {report.queue_status ? (
+                          <span className="inline-flex items-center rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] font-medium text-foreground/80 uppercase">
+                            {report.queue_status}
+                          </span>
+                        ) : null}
                       </div>
                       <p className="text-sm text-foreground">{report.reason}</p>
                       {report.details ? <p className="text-xs text-muted-foreground mt-1">{report.details}</p> : null}
@@ -766,13 +813,76 @@ export function AdminContent({
                         von @{report.profiles?.username} - {new Date(report.created_at).toLocaleDateString("de-DE")}
                       </p>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-transparent text-xs"
+                          onClick={async () => {
+                            try {
+                              await runReportAction(report.id, "assign_to_me")
+                            } catch (error) {
+                              toast.error(error instanceof Error ? error.message : "Aktion fehlgeschlagen")
+                            }
+                          }}
+                          title="Mir zuweisen"
+                        >
+                          Zuweisen
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-transparent text-xs"
+                          onClick={async () => {
+                            try {
+                              await runReportAction(report.id, "escalate")
+                            } catch (error) {
+                              toast.error(error instanceof Error ? error.message : "Aktion fehlgeschlagen")
+                            }
+                          }}
+                          title="Eskalieren"
+                        >
+                          Eskalieren
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-transparent text-xs"
+                          onClick={async () => {
+                            try {
+                              await runReportAction(report.id, "set_priority", { priority: "HIGH" })
+                            } catch (error) {
+                              toast.error(error instanceof Error ? error.message : "Aktion fehlgeschlagen")
+                            }
+                          }}
+                          title="Priorität hoch"
+                        >
+                          Hoch
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-transparent text-xs"
+                          onClick={async () => {
+                            try {
+                              await runReportAction(report.id, "set_priority", { priority: "CRITICAL" })
+                            } catch (error) {
+                              toast.error(error instanceof Error ? error.message : "Aktion fehlgeschlagen")
+                            }
+                          }}
+                          title="Priorität kritisch"
+                        >
+                          Kritisch
+                        </Button>
+                      </div>
+                      <div className="flex gap-1 justify-end">
                       <Button 
                         size="icon" 
                         variant="ghost" 
                         onClick={() => handleReportAction(report)} 
                         className="text-green-400 hover:text-green-300"
-                        title="Aktion durchführen"
+                        title="Aktion durchfÃ¼hren"
                       >
                         <CheckCircle className="h-4 w-4" />
                       </Button>
@@ -785,6 +895,7 @@ export function AdminContent({
                       >
                         <XCircle className="h-4 w-4" />
                       </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -804,7 +915,7 @@ export function AdminContent({
             {kpisLoading ? (
               <p className="text-sm text-muted-foreground">Daten werden geladen...</p>
             ) : !kpis ? (
-              <p className="text-sm text-muted-foreground">Keine Daten verfügbar.</p>
+              <p className="text-sm text-muted-foreground">Keine Daten verfÃ¼gbar.</p>
             ) : (
               <div className="space-y-4">
                 <div className="grid gap-3 md:grid-cols-4">
@@ -826,9 +937,9 @@ export function AdminContent({
                   </div>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
-                  <p className="text-sm font-medium text-foreground mb-2">Top Report-Gründe (7d)</p>
+                  <p className="text-sm font-medium text-foreground mb-2">Top Report-GrÃ¼nde (7d)</p>
                   {kpis.topReasons.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Keine Einträge.</p>
+                    <p className="text-xs text-muted-foreground">Keine EintrÃ¤ge.</p>
                   ) : (
                     <div className="space-y-1">
                       {kpis.topReasons.map((entry) => (
@@ -983,7 +1094,7 @@ export function AdminContent({
                       <p className="font-medium text-foreground text-sm">@{user.username}</p>
                       <p className="text-xs text-muted-foreground">{user.displayName}</p>
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground/80 mt-1">
-                        Rolle: {user.role || "user"}
+                        Rolle: {user.role || "user"} | {user.isVerified ? "verifiziert" : "nicht verifiziert"}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -992,8 +1103,8 @@ export function AdminContent({
                           <Eye className="h-3.5 w-3.5 mr-1" /> Benutzer ansehen
                         </Link>
                       </Button>
-                      <Button size="sm" onClick={() => verifyUser(user.id)} className="text-primary-foreground">
-                        <BadgeCheck className="h-3.5 w-3.5 mr-1" /> Verifizieren
+                      <Button size="sm" onClick={() => verifyUser(user.id, user.isVerified)} className="text-primary-foreground">
+                        <BadgeCheck className="h-3.5 w-3.5 mr-1" /> {user.isVerified ? "Verifizierung entfernen" : "Verifizieren"}
                       </Button>
                       <Button
                         size="sm"
@@ -1026,7 +1137,7 @@ export function AdminContent({
               <Hash className="h-4 w-4 text-primary" /> Channelliste
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Alle Channels mit Admin-Aktionen zum Bearbeiten und Löschen.
+              Alle Channels mit Admin-Aktionen zum Bearbeiten und LÃ¶schen.
             </p>
             <div className="flex gap-2 mb-4">
               <Input
@@ -1053,7 +1164,7 @@ export function AdminContent({
                         von @{channel.ownerUsername || channel.ownerId} - {channel.memberCount} Mitglieder
                       </p>
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground/80 mt-1">
-                        {channel.isPublic ? "öffentlich" : "privat"} | {channel.isVerified ? "verifiziert" : "nicht verifiziert"}
+                        {channel.isPublic ? "Ã¶ffentlich" : "privat"} | {channel.isVerified ? "verifiziert" : "nicht verifiziert"} | {channel.isLocked ? "gesperrt" : "offen"}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -1063,7 +1174,7 @@ export function AdminContent({
                         </Link>
                       </Button>
                       <Button size="sm" variant="destructive" onClick={() => deleteChannel(channel)}>
-                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Löschen
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> LÃ¶schen
                       </Button>
                     </div>
                   </div>
@@ -1107,7 +1218,7 @@ export function AdminContent({
                   </div>
                   <div className="grid gap-2">
                     <Label className="text-foreground">Grund</Label>
-                    <Textarea value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Grund für den Ban..." className="bg-secondary/50 border-border/50" />
+                    <Textarea value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Grund fÃ¼r den Ban..." className="bg-secondary/50 border-border/50" />
                   </div>
                   <Button variant="destructive" onClick={handleBan}>
                     <Ban className="h-4 w-4 mr-2" /> Bannen
@@ -1131,7 +1242,7 @@ export function AdminContent({
                       <p className="font-medium text-foreground text-sm">@{ban.profiles?.username}</p>
                       {ban.banned_until ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] font-medium text-yellow-400">
-                          <Clock className="h-3 w-3" /> Temporär
+                          <Clock className="h-3 w-3" /> TemporÃ¤r
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
@@ -1205,3 +1316,6 @@ export function AdminContent({
     </div>
   )
 }
+
+
+

@@ -116,6 +116,7 @@ model Profile {
   bio             String?
   avatarUrl       String?  @map("avatar_url")
   bannerUrl       String?  @map("banner_url")
+  isVerified      Boolean  @default(false) @map("is_verified")
   role            Role     @default(user)
   isPrivate       Boolean  @default(false) @map("is_private")
   showFollowers   Boolean  @default(true) @map("show_followers")
@@ -140,6 +141,7 @@ model Profile {
   botsOwned           Bot[]
   reportsCreated      Report[]   @relation("ReporterReports")
   reportsReviewed     Report[]   @relation("ReviewerReports")
+  reportsAssigned     Report[]   @relation("ReportAssignee")
   followersRel        Follow[]   @relation("Following")
   followingRel        Follow[]   @relation("Follower")
   followRequestsSent  FollowRequest[] @relation("FollowRequestSender")
@@ -222,6 +224,7 @@ model Channel {
   bannerUrl   String?  @map("banner_url")
   ownerId     String   @map("owner_id")
   isVerified  Boolean  @default(false) @map("is_verified")
+  isLocked    Boolean  @default(false) @map("is_locked")
   isPublic    Boolean  @default(true) @map("is_public")
   memberCount Int      @default(0) @map("member_count")
   boostedUntil DateTime? @map("boosted_until")
@@ -625,21 +628,43 @@ model Report {
   targetType  TargetType   @map("target_type")
   targetId    String       @map("target_id")
   reason      ReportReason
+  priority    ReportPriority @default(MEDIUM)
+  queueStatus ReportQueueStatus @default(PENDING) @map("queue_status")
+  assignedTo  String?      @map("assigned_to")
+  severityScore Int        @default(0) @map("severity_score")
   details     String?
+  resolutionAction String? @map("resolution_action")
   status      ReportStatus @default(PENDING)
   adminNotes  String?      @map("admin_notes")
   reviewedBy  String?      @map("reviewed_by")
   reviewedAt  DateTime?    @map("reviewed_at")
+  lastActionAt DateTime?   @map("last_action_at")
   createdAt   DateTime     @default(now()) @map("created_at")
 
   reporter Profile  @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
   reviewer Profile? @relation("ReviewerReports", fields: [reviewedBy], references: [id])
+  assignee Profile? @relation("ReportAssignee", fields: [assignedTo], references: [id])
 
   @@unique([reporterId, targetType, targetId])
   @@index([targetType, targetId])
   @@index([status])
   @@index([createdAt(sort: Desc)])
   @@map("reports")
+}
+
+enum ReportPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReportQueueStatus {
+  PENDING
+  TRIAGED
+  ESCALATED
+  RESOLVED
+  DISMISSED
 }
 
 enum TargetType {

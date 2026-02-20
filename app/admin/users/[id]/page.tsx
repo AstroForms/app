@@ -49,6 +49,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
           email: target.user?.email ?? "",
           name: target.user?.name ?? "",
           role: target.role,
+          isVerified: target.isVerified,
           createdAt: target.createdAt.toISOString(),
           avatarUrl: target.avatarUrl ?? null,
         }}
