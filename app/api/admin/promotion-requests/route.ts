@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     if (!promotionModel) {
       return NextResponse.json(
-        { success: false, error: "Promotion-Model nicht verfuegbar. Bitte Server neu starten." },
+        { success: false, error: "Promotion-Model nicht verfügbar. Bitte Server neu starten." },
         { status: 503 },
       )
     }
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
         }).channelPromotionRequest
 
         if (!txPromotionModel) {
-          throw new Error("Promotion-Model nicht verfuegbar. Bitte Server neu starten.")
+          throw new Error("Promotion-Model nicht verfügbar. Bitte Server neu starten.")
         }
 
         const promoRequest = await txPromotionModel.findUnique({
@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
         })
         if (!requesterProfile) throw new Error("Profil nicht gefunden")
         if (requesterProfile.xp < promoRequest.cost) {
-          throw new Error("Owner hat nicht genug XP fuer diese Werbeanfrage")
+          throw new Error("Owner hat nicht genug XP für diese Werbeanfrage")
         }
 
         const newXp = requesterProfile.xp - promoRequest.cost

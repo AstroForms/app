@@ -49,7 +49,7 @@ export function KontenVerknuepfen({
           <span className="h-4 w-4 text-primary">
             <Github />
           </span>
-          <h3 className="text-sm font-semibold text-foreground">Konten verknuepfen</h3>
+          <h3 className="text-sm font-semibold text-foreground">Konten verknüpfen</h3>
         </div>
         <p className="text-xs text-muted-foreground">
           Verknuepfe weitere Login-Methoden und verwalte vorhandene Verbindungen.
@@ -101,7 +101,7 @@ export function KontenVerknuepfen({
               </div>
             ))
           ) : (
-            <p className="text-xs text-muted-foreground">Keine OAuth-Provider verknuepft.</p>
+            <p className="text-xs text-muted-foreground">Keine OAuth-Provider verknüpft.</p>
           )}
 
         </div>

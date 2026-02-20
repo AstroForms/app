@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (target.role === "owner") {
-      return NextResponse.json({ success: false, error: "Owner-Rolle kann nicht geaendert werden." }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Owner-Rolle kann nicht geändert werden." }, { status: 400 })
     }
 
     if (target.role !== "moderator") {

@@ -54,7 +54,7 @@ function ChannelCard({ channel }: { channel: Channel }) {
           )}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {channel.member_count}</span>
-            <span>{channel.is_public ? "Oeffentlich" : "Privat"}</span>
+            <span>{channel.is_public ? "Öffentlich" : "Privat"}</span>
           </div>
         </div>
       </div>

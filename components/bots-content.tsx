@@ -688,7 +688,7 @@ export function BotsContent({
   const deleteBot = async (botId: string) => {
     const supabase = createDbClient()
     await supabase.from("bots").delete().eq("id", botId)
-    toast.success("Bot geloescht")
+    toast.success("Bot gelöscht")
     router.refresh()
   }
 
@@ -955,7 +955,7 @@ export function BotsContent({
         <TabsContent value="automations">
           {!automationsEnabled && (
             <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-300">
-              Diese Funktion wurde von der Administration deaktiviert. Automatisierungen koennen derzeit nicht verwendet werden.
+              Diese Funktion wurde von der Administration deaktiviert. Automatisierungen können derzeit nicht verwendet werden.
             </div>
           )}
           <div className="flex justify-end mb-4">
@@ -1364,11 +1364,11 @@ export function BotsContent({
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <p className="text-sm text-muted-foreground">
-              WÃ¤hle einen deiner Channels aus, um diesen Bot einzuladen.
+              Wähle einen deiner Channels aus, um diesen Bot einzuladen.
             </p>
             <Select value={inviteChannelId} onValueChange={setInviteChannelId}>
               <SelectTrigger className="bg-secondary/50 border-border/50 text-foreground">
-                <SelectValue placeholder="Channel wÃ¤hlen..." />
+                <SelectValue placeholder="Channel wählen..." />
               </SelectTrigger>
               <SelectContent>
                 {channels.map((ch) => (

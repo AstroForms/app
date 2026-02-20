@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!verified) {
-    return NextResponse.json({ error: "Ungueltiger 2FA- oder Backup-Code." }, { status: 400 })
+    return NextResponse.json({ error: "Ungültiger 2FA- oder Backup-Code." }, { status: 400 })
   }
 
   if (updatedBackupCodes.length !== (Array.isArray(user.twoFactorBackupCodes) ? user.twoFactorBackupCodes.length : 0)) {

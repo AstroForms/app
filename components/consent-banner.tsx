@@ -93,7 +93,7 @@ export function ConsentBanner() {
   return (
     <div className="fixed inset-x-4 bottom-4 z-[100] mx-auto max-w-2xl rounded-2xl border border-border/60 bg-card/95 p-4 shadow-2xl backdrop-blur">
       <p className="text-sm text-foreground">
-        Wir verwenden Cookies fuer Login, Sicherheit und optionale Analyse/Marketing-Funktionen.
+        Wir verwenden Cookies für Login, Sicherheit und optionale Analyse/Marketing-Funktionen.
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
         Mehr Infos in{" "}

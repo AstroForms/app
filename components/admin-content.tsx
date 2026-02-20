@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { createDbClient } from "@/lib/db-client"
 import { Button } from "@/components/ui/button"
@@ -370,7 +370,7 @@ export function AdminContent({
         admin_notes: modReason || null,
       })
       .eq("id", reportId)
-    toast.success(`Report ${status === "resolved" ? "aufgeloest" : "abgelehnt"}`)
+    toast.success(`Report ${status === "resolved" ? "aufgelöst" : "abgelehnt"}`)
     router.refresh()
   }
 
@@ -442,7 +442,7 @@ export function AdminContent({
     if (userModAction === "temp_ban") {
       const duration = ["1h", "6h", "1d", "3d", "7d", "30d"].includes(userModDuration) ? userModDuration : "1d"
       await banUserById(targetUserId, modReason || "Temporarer Ban", duration)
-      toast.success(`Nutzer fuer ${duration} gebannt!`)
+      toast.success(`Nutzer für ${duration} gebannt!`)
     } else if (userModAction === "perma_ban") {
       await banUserById(targetUserId, modReason || "Permanenter Ban", "permanent")
       toast.success("Nutzer permanent gebannt!")
@@ -459,7 +459,7 @@ export function AdminContent({
     if (!banUserId.trim()) return
     try {
       await banUserById(banUserId, banReason || "", banDuration)
-      toast.success(banDuration === "permanent" ? "Nutzer permanent gebannt" : `Nutzer fuer ${banDuration} gebannt`)
+      toast.success(banDuration === "permanent" ? "Nutzer permanent gebannt" : `Nutzer für ${banDuration} gebannt`)
       setBanUserId("")
       setBanReason("")
       setBanDuration("permanent")
@@ -490,7 +490,7 @@ export function AdminContent({
 
   const deleteChannel = async (channel: AdminChannel) => {
     const confirmed = window.confirm(
-      `Channel #${channel.name} wirklich loeschen? Diese Aktion kann nicht rueckgaengig gemacht werden.`,
+      `Channel #${channel.name} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
     )
     if (!confirmed) return
 
@@ -502,13 +502,13 @@ export function AdminContent({
       })
       const data = await res.json().catch(() => null)
       if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Channel konnte nicht geloescht werden")
+        throw new Error(data?.error || "Channel konnte nicht gelöscht werden")
       }
-      toast.success("Channel geloescht")
+      toast.success("Channel gelöscht")
       await loadChannels()
       router.refresh()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Channel konnte nicht geloescht werden")
+      toast.error(error instanceof Error ? error.message : "Channel konnte nicht gelöscht werden")
     }
   }
 
@@ -578,7 +578,7 @@ export function AdminContent({
               <Textarea 
                 value={modReason} 
                 onChange={(e) => setModReason(e.target.value)} 
-                placeholder="Grund fÃ¼r die Aktion..." 
+                placeholder="Grund für die Aktion..." 
                 className="bg-secondary/50 border-border/50" 
               />
             </div>
@@ -625,13 +625,13 @@ export function AdminContent({
           </DialogHeader>
           <div className="flex flex-col gap-4 mt-4">
             <div className="grid gap-2">
-              <Label className="text-foreground">Aktion auswÃ¤hlen</Label>
+              <Label className="text-foreground">Aktion auswählen</Label>
               <Select value={userModAction} onValueChange={setUserModAction}>
                 <SelectTrigger className="bg-secondary/50 border-border/50">
-                  <SelectValue placeholder="Aktion wÃ¤hlen..." />
+                  <SelectValue placeholder="Aktion wählen..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="temp_ban">TemporÃ¤r bannen</SelectItem>
+                  <SelectItem value="temp_ban">Temporär bannen</SelectItem>
                   <SelectItem value="perma_ban">Permanent bannen</SelectItem>
                 </SelectContent>
               </Select>
@@ -661,7 +661,7 @@ export function AdminContent({
               <Textarea 
                 value={modReason} 
                 onChange={(e) => setModReason(e.target.value)} 
-                placeholder="Grund fÃ¼r die Aktion..." 
+                placeholder="Grund für die Aktion..." 
                 className="bg-secondary/50 border-border/50" 
               />
             </div>
@@ -671,7 +671,7 @@ export function AdminContent({
               Abbrechen
             </Button>
             <Button onClick={handleUserModAction} disabled={!userModAction} variant={userModAction === "perma_ban" ? "destructive" : "default"}>
-              AusfÃ¼hren
+              Ausführen
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -772,7 +772,7 @@ export function AdminContent({
                         variant="ghost" 
                         onClick={() => handleReportAction(report)} 
                         className="text-green-400 hover:text-green-300"
-                        title="Aktion durchfÃ¼hren"
+                        title="Aktion durchführen"
                       >
                         <CheckCircle className="h-4 w-4" />
                       </Button>
@@ -804,7 +804,7 @@ export function AdminContent({
             {kpisLoading ? (
               <p className="text-sm text-muted-foreground">Daten werden geladen...</p>
             ) : !kpis ? (
-              <p className="text-sm text-muted-foreground">Keine Daten verfÃ¼gbar.</p>
+              <p className="text-sm text-muted-foreground">Keine Daten verfügbar.</p>
             ) : (
               <div className="space-y-4">
                 <div className="grid gap-3 md:grid-cols-4">
@@ -826,9 +826,9 @@ export function AdminContent({
                   </div>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-secondary/20 p-3">
-                  <p className="text-sm font-medium text-foreground mb-2">Top Report-GrÃ¼nde (7d)</p>
+                  <p className="text-sm font-medium text-foreground mb-2">Top Report-Gründe (7d)</p>
                   {kpis.topReasons.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Keine EintrÃ¤ge.</p>
+                    <p className="text-xs text-muted-foreground">Keine Einträge.</p>
                   ) : (
                     <div className="space-y-1">
                       {kpis.topReasons.map((entry) => (
@@ -1026,7 +1026,7 @@ export function AdminContent({
               <Hash className="h-4 w-4 text-primary" /> Channelliste
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Alle Channels mit Admin-Aktionen zum Bearbeiten und Loeschen.
+              Alle Channels mit Admin-Aktionen zum Bearbeiten und Löschen.
             </p>
             <div className="flex gap-2 mb-4">
               <Input
@@ -1053,7 +1053,7 @@ export function AdminContent({
                         von @{channel.ownerUsername || channel.ownerId} - {channel.memberCount} Mitglieder
                       </p>
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground/80 mt-1">
-                        {channel.isPublic ? "oeffentlich" : "privat"} | {channel.isVerified ? "verifiziert" : "nicht verifiziert"}
+                        {channel.isPublic ? "öffentlich" : "privat"} | {channel.isVerified ? "verifiziert" : "nicht verifiziert"}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -1063,7 +1063,7 @@ export function AdminContent({
                         </Link>
                       </Button>
                       <Button size="sm" variant="destructive" onClick={() => deleteChannel(channel)}>
-                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Loeschen
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Löschen
                       </Button>
                     </div>
                   </div>
@@ -1107,7 +1107,7 @@ export function AdminContent({
                   </div>
                   <div className="grid gap-2">
                     <Label className="text-foreground">Grund</Label>
-                    <Textarea value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Grund fuer den Ban..." className="bg-secondary/50 border-border/50" />
+                    <Textarea value={banReason} onChange={(e) => setBanReason(e.target.value)} placeholder="Grund für den Ban..." className="bg-secondary/50 border-border/50" />
                   </div>
                   <Button variant="destructive" onClick={handleBan}>
                     <Ban className="h-4 w-4 mr-2" /> Bannen
@@ -1131,7 +1131,7 @@ export function AdminContent({
                       <p className="font-medium text-foreground text-sm">@{ban.profiles?.username}</p>
                       {ban.banned_until ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] font-medium text-yellow-400">
-                          <Clock className="h-3 w-3" /> TemporÃ¤r
+                          <Clock className="h-3 w-3" /> Temporär
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
@@ -1205,4 +1205,3 @@ export function AdminContent({
     </div>
   )
 }
-

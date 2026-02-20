@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!verifyTotpToken(token, user.twoFactorTempSecret)) {
-      return NextResponse.json({ error: "Ungueltiger 2FA-Code." }, { status: 400 })
+      return NextResponse.json({ error: "Ungültiger 2FA-Code." }, { status: 400 })
     }
 
     const backupCodes = generateBackupCodes(10)
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!verified) {
-      return NextResponse.json({ error: "Ungueltiger 2FA- oder Backup-Code." }, { status: 400 })
+      return NextResponse.json({ error: "Ungültiger 2FA- oder Backup-Code." }, { status: 400 })
     }
 
     const backupCodes = generateBackupCodes(10)
@@ -190,7 +190,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   if (!verified) {
-    return NextResponse.json({ error: "Ungueltiger 2FA- oder Backup-Code." }, { status: 400 })
+    return NextResponse.json({ error: "Ungültiger 2FA- oder Backup-Code." }, { status: 400 })
   }
 
   await prisma.user.update({

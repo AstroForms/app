@@ -48,7 +48,7 @@ export function BotsDiscoverContent({
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-foreground">Bots entdecken</h1>
-        <p className="text-muted-foreground mt-1">Finde Ã¶ffentliche Bots und lade sie in deine Channels ein</p>
+        <p className="text-muted-foreground mt-1">Finde öffentliche Bots und lade sie in deine Channels ein</p>
       </div>
 
       <div className="relative mb-6">

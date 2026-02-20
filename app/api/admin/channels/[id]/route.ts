@@ -143,7 +143,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
     if (!confirmation || confirmation !== target.name.trim()) {
       return NextResponse.json(
-        { success: false, error: "Bestaetigung stimmt nicht mit dem Channel-Namen ueberein" },
+        { success: false, error: "Bestätigung stimmt nicht mit dem Channel-Namen überein" },
         { status: 400 },
       )
     }

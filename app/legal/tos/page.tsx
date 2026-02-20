@@ -33,7 +33,7 @@ const TERMS_CHANGELOG = [
     version: "v1.0",
     date: "1. Februar 2026",
     changes: [
-      "Erstveroeffentlichung der Nutzungsbedingungen.",
+      "Erstveröffentlichung der Nutzungsbedingungen.",
     ],
   },
 ]
@@ -47,7 +47,7 @@ export default function TosPage() {
             <Image src="/banner.png" alt="AstroForms Logo" width={150} height={32} className="rounded-sm" />
           </Link>
           <Button variant="ghost" asChild className="text-muted-foreground">
-            <Link href="/"><ArrowLeft className="h-4 w-4 mr-2" /> Zurueck</Link>
+            <Link href="/"><ArrowLeft className="h-4 w-4 mr-2" /> Zurück</Link>
           </Button>
         </div>
       </header>
@@ -60,7 +60,7 @@ export default function TosPage() {
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">1. Geltungsbereich</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Diese Allgemeinen Geschaeftsbedingungen gelten fuer die Nutzung der Plattform AstroForms und aller damit verbundenen Dienste. 
+              Diese Allgemeinen Geschäftsbedingungen gelten für die Nutzung der Plattform AstroForms und aller damit verbundenen Dienste. 
               Mit der Registrierung und Nutzung der Plattform erklaert sich der Nutzer mit diesen Bedingungen einverstanden.
             </p>
           </section>
@@ -68,41 +68,41 @@ export default function TosPage() {
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">2. Registrierung und Account</h2>
             <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-              Fuer die Nutzung der Plattform ist eine Registrierung erforderlich. Der Nutzer ist verpflichtet, wahrheitsgetreue und vollstaendige Angaben zu machen. Jeder Nutzer darf nur einen Account besitzen.
+              Für die Nutzung der Plattform ist eine Registrierung erforderlich. Der Nutzer ist verpflichtet, wahrheitsgetreue und vollständige Angaben zu machen. Jeder Nutzer darf nur einen Account besitzen.
             </p>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Der Nutzer ist fuer die Sicherheit seiner Zugangsdaten selbst verantwortlich. Bei Verdacht auf Missbrauch des Accounts ist der Nutzer verpflichtet, uns unverzueglich zu informieren.
+              Der Nutzer ist für die Sicherheit seiner Zugangsdaten selbst verantwortlich. Bei Verdacht auf Missbrauch des Accounts ist der Nutzer verpflichtet, uns unverzüglich zu informieren.
             </p>
           </section>
 
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">3. Nutzungsregeln</h2>
             <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-              Der Nutzer verpflichtet sich, die Plattform nicht fuer rechtswidrige Zwecke zu nutzen. Insbesondere ist es untersagt:
+              Der Nutzer verpflichtet sich, die Plattform nicht für rechtswidrige Zwecke zu nutzen. Insbesondere ist es untersagt:
             </p>
             <ul className="list-disc list-inside text-sm text-muted-foreground leading-relaxed flex flex-col gap-2">
-              <li>Inhalte zu verbreiten, die gegen geltendes Recht verstossen</li>
+              <li>Inhalte zu verbreiten, die gegen geltendes Recht verstoßen</li>
               <li>Andere Nutzer zu belaestigen, zu bedrohen oder zu diskriminieren</li>
               <li>Spam oder unerwuenschte Werbung zu verbreiten</li>
-              <li>Die Plattform technisch zu manipulieren oder zu ueberlasten</li>
-              <li>Bots oder Automatisierungen fuer missbräuchliche Zwecke einzusetzen</li>
+              <li>Die Plattform technisch zu manipulieren oder zu überlasten</li>
+              <li>Bots oder Automatisierungen für missbräuchliche Zwecke einzusetzen</li>
             </ul>
           </section>
 
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">4. Channels und Inhalte</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Nutzer koennen eigene Channels erstellen und Inhalte veroeffentlichen. Fuer die Inhalte ist der jeweilige Nutzer selbst verantwortlich. 
-              AstroForms behaelt sich das Recht vor, Inhalte und Channels zu entfernen, die gegen diese Nutzungsbedingungen verstossen.
-              Channel-Owner und Moderatoren sind fuer die Einhaltung der Regeln in ihren Channels mitverantwortlich.
+              Nutzer können eigene Channels erstellen und Inhalte veröffentlichen. Für die Inhalte ist der jeweilige Nutzer selbst verantwortlich. 
+              AstroForms behält sich das Recht vor, Inhalte und Channels zu entfernen, die gegen diese Nutzungsbedingungen verstoßen.
+              Channel-Owner und Moderatoren sind für die Einhaltung der Regeln in ihren Channels mitverantwortlich.
             </p>
           </section>
 
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">5. Bots und Automatisierungen</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Die Erstellung von Bots und Automatisierungen ist erlaubt, sofern diese nicht gegen die Nutzungsregeln verstossen. 
-              Automatisierte Posts werden mit einem AUTOMIERT-Badge gekennzeichnet. AstroForms behaelt sich das Recht vor, nicht verifizierte Bots einzuschraenken oder zu entfernen.
+              Die Erstellung von Bots und Automatisierungen ist erlaubt, sofern diese nicht gegen die Nutzungsregeln verstoßen. 
+              Automatisierte Posts werden mit einem AUTOMIERT-Badge gekennzeichnet. AstroForms behält sich das Recht vor, nicht verifizierte Bots einzuschraenken oder zu entfernen.
             </p>
           </section>
 
@@ -110,23 +110,23 @@ export default function TosPage() {
             <h2 className="text-xl font-semibold text-foreground mb-4">6. XP und Levelsystem</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Das XP- und Levelsystem dient der Gamification der Plattform. Es besteht kein Anspruch auf bestimmte XP-Werte oder Level. 
-              AstroForms behaelt sich das Recht vor, das System jederzeit anzupassen. Missbrauch des XP-Systems kann zur Zuruecksetzung der XP und zum Ausschluss von der Plattform fuehren.
+              AstroForms behält sich das Recht vor, das System jederzeit anzupassen. Missbrauch des XP-Systems kann zur Zurücksetzung der XP und zum Ausschluss von der Plattform fuehren.
             </p>
           </section>
 
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">7. Haftung</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              AstroForms haftet nicht fuer Schaeden, die durch die Nutzung der Plattform entstehen, es sei denn, es liegt Vorsatz oder grobe Fahrlaessigkeit vor. 
-              Fuer die Verfuegbarkeit der Plattform wird keine Garantie uebernommen.
+              AstroForms haftet nicht für Schäden, die durch die Nutzung der Plattform entstehen, es sei denn, es liegt Vorsatz oder grobe Fahrlässigkeit vor. 
+              Für die Verfügbarkeit der Plattform wird keine Garantie übernommen.
             </p>
           </section>
 
           <section className="glass rounded-2xl p-8 mb-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">8. Aenderungen der Nutzungsbedingungen</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">8. Änderungen der Nutzungsbedingungen</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              AstroForms behaelt sich das Recht vor, diese Nutzungsbedingungen jederzeit zu aendern. Aenderungen werden den Nutzern rechtzeitig mitgeteilt. 
-              Die weitere Nutzung der Plattform nach Aenderung der Nutzungsbedingungen gilt als Zustimmung zu den geaenderten Bedingungen.
+              AstroForms behält sich das Recht vor, diese Nutzungsbedingungen jederzeit zu ändern. Änderungen werden den Nutzern rechtzeitig mitgeteilt. 
+              Die weitere Nutzung der Plattform nach Änderung der Nutzungsbedingungen gilt als Zustimmung zu den geänderten Bedingungen.
             </p>
           </section>
 

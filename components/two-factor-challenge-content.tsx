@@ -30,12 +30,12 @@ export function TwoFactorChallengeContent({ callbackUrl }: TwoFactorChallengeCon
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(data.error || "2FA-Code ungueltig.")
+        throw new Error(data.error || "2FA-Code ungültig.")
       }
       router.push(callbackUrl)
       router.refresh()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "2FA-Code ungueltig.")
+      setError(err instanceof Error ? err.message : "2FA-Code ungültig.")
     } finally {
       setIsLoading(false)
     }
@@ -46,7 +46,7 @@ export function TwoFactorChallengeContent({ callbackUrl }: TwoFactorChallengeCon
       <div className="w-full max-w-md glass rounded-2xl p-8">
         <div className="mb-6 text-center">
           <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">2FA-Bestaetigung</h1>
+          <h1 className="text-2xl font-bold text-foreground">2FA-Bestätigung</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Gib den 6-stelligen Code aus deiner Authenticator-App oder einen Backup-Code ein.
           </p>
@@ -64,7 +64,7 @@ export function TwoFactorChallengeContent({ callbackUrl }: TwoFactorChallengeCon
             <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>
           )}
           <Button type="submit" className="h-11 w-full text-primary-foreground font-semibold" disabled={isLoading}>
-            {isLoading ? "Pruefen..." : "Code bestaetigen"}
+            {isLoading ? "Prüfen..." : "Code bestätigen"}
           </Button>
         </form>
 

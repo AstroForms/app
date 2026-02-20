@@ -97,7 +97,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const expected = ownerCheck.channel?.name?.trim() || ""
 
   if (!confirmation || confirmation !== expected) {
-    return NextResponse.json({ error: "Bestaetigung stimmt nicht mit dem Channel-Namen ueberein" }, { status: 400 })
+    return NextResponse.json({ error: "Bestätigung stimmt nicht mit dem Channel-Namen überein" }, { status: 400 })
   }
 
   await prisma.$transaction(async (tx) => {

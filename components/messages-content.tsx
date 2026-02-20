@@ -598,7 +598,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
     const data = await res.json().catch(() => ({ results: [] }))
     if (!res.ok) {
       setGifs([])
-      toast.error("GIF-Suche ist momentan nicht verfuegbar")
+      toast.error("GIF-Suche ist momentan nicht verfügbar")
       return
     }
     setGifs(Array.isArray(data?.results) ? data.results : [])

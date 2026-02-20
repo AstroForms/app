@@ -22,7 +22,7 @@ export default async function AdminPage() {
       <DashboardShell>
         <div className="max-w-lg mx-auto glass rounded-2xl p-12 text-center">
           <h1 className="text-xl font-bold text-foreground mb-2">Kein Zugriff</h1>
-          <p className="text-muted-foreground">Du benoetigst Admin-Rechte fuer diesen Bereich.</p>
+          <p className="text-muted-foreground">Du benötigst Admin-Rechte für diesen Bereich.</p>
         </div>
       </DashboardShell>
     )

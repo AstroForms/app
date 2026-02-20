@@ -56,7 +56,7 @@ export default function SignUpPage() {
     setError(null)
 
     if (password !== repeatPassword) {
-      setError("Passwoerter stimmen nicht ueberein")
+      setError("Passwörter stimmen nicht überein")
       setIsLoading(false)
       return
     }

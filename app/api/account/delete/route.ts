@@ -17,7 +17,7 @@ export async function DELETE(req: NextRequest) {
   const currentPassword = typeof body?.currentPassword === "string" ? body.currentPassword : ""
 
   if (confirmation !== DELETE_CONFIRM_TEXT) {
-    return NextResponse.json({ error: `Bitte gib zur Bestaetigung '${DELETE_CONFIRM_TEXT}' ein.` }, { status: 400 })
+    return NextResponse.json({ error: `Bitte gib zur Bestätigung '${DELETE_CONFIRM_TEXT}' ein.` }, { status: 400 })
   }
 
   const user = await prisma.user.findUnique({
@@ -33,7 +33,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   if (user.profile?.role === "owner") {
-    return NextResponse.json({ error: "Owner-Accounts koennen nicht selbst geloescht werden." }, { status: 400 })
+    return NextResponse.json({ error: "Owner-Accounts können nicht selbst gelöscht werden." }, { status: 400 })
   }
 
   if (user.password) {

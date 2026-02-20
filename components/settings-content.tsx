@@ -404,7 +404,7 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       return
     }
     if (newPassword !== confirmNewPassword) {
-      toast.error("Neue Passwoerter stimmen nicht ueberein.")
+      toast.error("Neue Passwörter stimmen nicht überein.")
       return
     }
 
@@ -420,15 +420,15 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(data.error || "Passwort konnte nicht geaendert werden")
+        throw new Error(data.error || "Passwort konnte nicht geändert werden")
       }
-      toast.success("Passwort erfolgreich geaendert")
+      toast.success("Passwort erfolgreich geändert")
       setCurrentPassword("")
       setNewPassword("")
       setConfirmNewPassword("")
       await loadLinkedAccounts()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Passwort konnte nicht geaendert werden")
+      toast.error(err instanceof Error ? err.message : "Passwort konnte nicht geändert werden")
     } finally {
       setIsChangingPassword(false)
     }
@@ -451,7 +451,7 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       setTwoFactorSetupCode("")
       setTwoFactor((prev) => ({ ...prev, setupPending: true }))
       setTwoFactorBackupCodes([])
-      toast.success("2FA-Setup gestartet. Bitte mit einem Code bestaetigen.")
+      toast.success("2FA-Setup gestartet. Bitte mit einem Code bestätigen.")
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "2FA-Setup konnte nicht gestartet werden")
     } finally {
@@ -571,13 +571,13 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(data.error || "Konto konnte nicht geloescht werden")
+        throw new Error(data.error || "Konto konnte nicht gelöscht werden")
       }
 
-      toast.success("Konto geloescht")
+      toast.success("Konto gelöscht")
       await authSignOut({ callbackUrl: "/" })
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Konto konnte nicht geloescht werden")
+      toast.error(err instanceof Error ? err.message : "Konto konnte nicht gelöscht werden")
     } finally {
       setIsDeletingAccount(false)
     }
@@ -916,7 +916,7 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
                       </p>
                     )}
                     <div className="grid gap-2">
-                      <Label className="text-foreground">2FA-Code bestaetigen</Label>
+                      <Label className="text-foreground">2FA-Code bestätigen</Label>
                       <Input
                         value={twoFactorSetupCode}
                         onChange={(e) => setTwoFactorSetupCode(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
@@ -927,7 +927,7 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
                     </div>
                     <div className="flex gap-2">
                       <Button onClick={confirmTwoFactorSetup} disabled={isTwoFactorVerifying} className="h-10 text-primary-foreground font-semibold">
-                        {isTwoFactorVerifying ? "Pruefen..." : "Aktivierung bestaetigen"}
+                        {isTwoFactorVerifying ? "Prüfen..." : "Aktivierung bestätigen"}
                       </Button>
                       <Button onClick={startTwoFactorSetup} variant="secondary" className="h-10" disabled={isTwoFactorLoading}>
                         QR neu laden
@@ -1094,13 +1094,13 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
               </div>
 
               <div className="border-t border-border/40 pt-6">
-                <h3 className="text-base font-semibold text-destructive mb-2">Konto loeschen</h3>
+                <h3 className="text-base font-semibold text-destructive mb-2">Konto löschen</h3>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Diese Aktion ist endgueltig. Alle Daten zu deinem Konto werden entfernt.
+                  Diese Aktion ist endgültig. Alle Daten zu deinem Konto werden entfernt.
                 </p>
                 <div className="space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
                   <div className="grid gap-2">
-                    <Label className="text-foreground">Bestaetigung</Label>
+                    <Label className="text-foreground">Bestätigung</Label>
                     <Input
                       value={deleteConfirmation}
                       onChange={(e) => setDeleteConfirmation(e.target.value)}
@@ -1129,7 +1129,7 @@ export function SettingsContent({ profile }: { profile: Profile | null }) {
                     disabled={isDeletingAccount || deleteConfirmation.trim().length === 0}
                     className="h-11 font-semibold"
                   >
-                    {isDeletingAccount ? "Konto wird geloescht..." : "Konto endgueltig loeschen"}
+                    {isDeletingAccount ? "Konto wird gelöscht..." : "Konto endgültig löschen"}
                   </Button>
                 </div>
               </div>

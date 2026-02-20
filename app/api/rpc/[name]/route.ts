@@ -100,7 +100,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
         }).channelPromotionRequest
 
         if (!promotionModel) {
-          throw new Error("Promotion-Model nicht verfuegbar. Bitte Server neu starten.")
+          throw new Error("Promotion-Model nicht verfügbar. Bitte Server neu starten.")
         }
 
         const existingPendingRequest = await promotionModel.findFirst({

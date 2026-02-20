@@ -58,7 +58,7 @@ export function AdminChannelDetailContent({ targetChannel }: { targetChannel: Ta
 
   const handleDelete = async () => {
     if (deleteConfirmation.trim() !== targetChannel.name) {
-      toast.error("Bestaetigung stimmt nicht mit dem Channel-Namen ueberein.")
+      toast.error("Bestätigung stimmt nicht mit dem Channel-Namen überein.")
       return
     }
 
@@ -73,12 +73,12 @@ export function AdminChannelDetailContent({ targetChannel }: { targetChannel: Ta
       })
       const data = await res.json().catch(() => null)
       if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Channel konnte nicht geloescht werden")
+        throw new Error(data?.error || "Channel konnte nicht gelöscht werden")
       }
-      toast.success("Channel geloescht.")
+      toast.success("Channel gelöscht.")
       router.push("/admin")
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Channel konnte nicht geloescht werden")
+      toast.error(error instanceof Error ? error.message : "Channel konnte nicht gelöscht werden")
     } finally {
       setIsLoading(false)
     }
@@ -89,11 +89,11 @@ export function AdminChannelDetailContent({ targetChannel }: { targetChannel: Ta
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Channel ansehen</h1>
-          <p className="text-sm text-muted-foreground">Admin-Aktionen fuer einen einzelnen Channel</p>
+          <p className="text-sm text-muted-foreground">Admin-Aktionen für einen einzelnen Channel</p>
         </div>
         <Button variant="outline" asChild className="bg-transparent">
           <Link href="/admin">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Zurueck
+            <ArrowLeft className="h-4 w-4 mr-2" /> Zurück
           </Link>
         </Button>
       </div>
@@ -106,7 +106,7 @@ export function AdminChannelDetailContent({ targetChannel }: { targetChannel: Ta
         </p>
         <p className="text-sm text-muted-foreground">Owner: @{targetChannel.ownerUsername || targetChannel.ownerId}</p>
         <p className="text-sm text-muted-foreground">Mitglieder: {targetChannel.memberCount}</p>
-        <p className="text-sm text-muted-foreground">Sichtbarkeit: {targetChannel.isPublic ? "oeffentlich" : "privat"}</p>
+        <p className="text-sm text-muted-foreground">Sichtbarkeit: {targetChannel.isPublic ? "öffentlich" : "privat"}</p>
         <p className="text-sm text-muted-foreground">Verifiziert: {targetChannel.isVerified ? "ja" : "nein"}</p>
         <p className="text-sm text-muted-foreground">
           Erstellt am: {new Date(targetChannel.createdAt).toLocaleDateString("de-DE")}
@@ -137,7 +137,7 @@ export function AdminChannelDetailContent({ targetChannel }: { targetChannel: Ta
         </div>
         <div className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/20 p-3">
           <div>
-            <p className="text-sm font-medium text-foreground">Oeffentlich</p>
+            <p className="text-sm font-medium text-foreground">Öffentlich</p>
             <p className="text-xs text-muted-foreground">Steuert, ob der Channel sichtbar/beitretbar ist.</p>
           </div>
           <Switch checked={isPublic} onCheckedChange={setIsPublic} disabled={isLoading} />
@@ -148,9 +148,9 @@ export function AdminChannelDetailContent({ targetChannel }: { targetChannel: Ta
       </div>
 
       <div className="glass rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-destructive mb-3">Gefaehrliche Aktion</h2>
+        <h2 className="text-lg font-semibold text-destructive mb-3">Gefährliche Aktion</h2>
         <p className="text-sm text-muted-foreground mb-2">
-          Zur Bestaetigung den Channel-Namen eingeben: <span className="font-medium text-foreground">{targetChannel.name}</span>
+          Zur Bestätigung den Channel-Namen eingeben: <span className="font-medium text-foreground">{targetChannel.name}</span>
         </p>
         <div className="flex gap-2">
           <Input
@@ -160,7 +160,7 @@ export function AdminChannelDetailContent({ targetChannel }: { targetChannel: Ta
             className="bg-secondary/50 border-border/50"
           />
           <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>
-            <Trash2 className="h-4 w-4 mr-2" /> Loeschen
+            <Trash2 className="h-4 w-4 mr-2" /> Löschen
           </Button>
         </div>
       </div>

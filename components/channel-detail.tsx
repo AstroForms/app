@@ -912,16 +912,16 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(typeof data?.error === "string" ? data.error : "Channel konnte nicht geloescht werden")
+        throw new Error(typeof data?.error === "string" ? data.error : "Channel konnte nicht gelöscht werden")
       }
-      toast.success("Channel wurde geloescht")
+      toast.success("Channel wurde gelöscht")
       if (typeof window !== "undefined") {
         window.location.assign("/channels")
         return
       }
       router.push("/channels")
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Channel konnte nicht geloescht werden")
+      toast.error(error instanceof Error ? error.message : "Channel konnte nicht gelöscht werden")
     } finally {
       setIsDeletingChannel(false)
       setShowDeleteChannelDialog(false)
@@ -984,10 +984,10 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
 
     if (payload?.status === "PENDING") {
       setHasPendingPromotionRequest(true)
-      toast.success(`Werbeanfrage fuer ${packageLabel} gesendet`)
+      toast.success(`Werbeanfrage für ${packageLabel} gesendet`)
       setShowPromoteDialog(false)
     } else {
-      toast.success(`Channel fuer ${packageLabel} beworben`)
+      toast.success(`Channel für ${packageLabel} beworben`)
     }
     router.refresh()
     setIsPromotingChannel(false)
@@ -1246,7 +1246,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
                 )}
                 <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {members.length} Mitglieder</span>
-                  <span>{channelIsPublic ? "Oeffentlich" : "Privat"}</span>
+                  <span>{channelIsPublic ? "Öffentlich" : "Privat"}</span>
                 </div>
               </div>
             </div>
@@ -1306,7 +1306,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
           {isOwner && showSettings && (
             <div className="mt-4 pt-4 border-t border-border/30">
               <p className="text-sm text-muted-foreground mb-4">
-                Klicke auf das Icon oder Banner um es zu aendern (max. 5MB fuer Icon, 10MB fuer Banner)
+                Klicke auf das Icon oder Banner um es zu ändern (max. 5MB für Icon, 10MB für Banner)
               </p>
               <div className="grid gap-3">
                 <div className="grid gap-2">
@@ -1333,7 +1333,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
                   <div>
                     <p className="text-sm text-foreground">Sichtbarkeit</p>
                     <p className="text-xs text-muted-foreground">
-                      {settingsIsPublic ? "Oeffentlich in Discover sichtbar" : "Nur per direktem Link sichtbar"}
+                      {settingsIsPublic ? "Öffentlich in Discover sichtbar" : "Nur per direktem Link sichtbar"}
                     </p>
                   </div>
                   <Switch checked={settingsIsPublic} onCheckedChange={setSettingsIsPublic} />
@@ -1365,17 +1365,17 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
                     }}
                     disabled={isSavingSettings}
                   >
-                    Zuruecksetzen
+                    Zurücksetzen
                   </Button>
                 </div>
                 <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
                   <p className="text-sm font-medium text-destructive">Gefahrenzone</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Beim Loeschen werden alle Posts, Mitglieder und Channel-Daten unwiderruflich entfernt.
+                    Beim Löschen werden alle Posts, Mitglieder und Channel-Daten unwiderruflich entfernt.
                   </p>
                   <Button variant="destructive" className="mt-3" onClick={() => setShowDeleteChannelDialog(true)}>
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Channel loeschen
+                    Channel löschen
                   </Button>
                 </div>
               </div>
@@ -1690,9 +1690,9 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
       <Dialog open={showDeleteChannelDialog} onOpenChange={setShowDeleteChannelDialog}>
         <DialogContent className="glass border-border/50">
           <DialogHeader>
-            <DialogTitle className="text-foreground">Channel loeschen</DialogTitle>
+            <DialogTitle className="text-foreground">Channel löschen</DialogTitle>
             <DialogDescription>
-              Gib zur Bestaetigung den Channel-Namen ein: <span className="font-semibold text-foreground">{channelName}</span>
+              Gib zur Bestätigung den Channel-Namen ein: <span className="font-semibold text-foreground">{channelName}</span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-1">
@@ -1705,7 +1705,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
               className="bg-secondary/30 border-border/50"
             />
             <p className="text-xs text-muted-foreground">
-              Diese Aktion kann nicht rueckgaengig gemacht werden.
+              Diese Aktion kann nicht rückgängig gemacht werden.
             </p>
           </div>
           <DialogFooter>
@@ -1722,7 +1722,7 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
               onClick={handleDeleteChannel}
               disabled={isDeletingChannel || deleteChannelConfirmation.trim().length === 0}
             >
-              {isDeletingChannel ? "Loeschen..." : "Channel endgueltig loeschen"}
+              {isDeletingChannel ? "Löschen..." : "Channel endgültig löschen"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1779,4 +1779,3 @@ export function ChannelDetail({ channel, posts, members, membership, userId }: C
     </div>
   )
 }
-

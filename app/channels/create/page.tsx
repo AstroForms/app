@@ -100,7 +100,7 @@ export default function CreateChannelPage() {
             </div>
             <div className="flex items-center justify-between rounded-xl bg-secondary/30 p-4">
               <div>
-                <Label className="text-foreground">Oeffentlich</Label>
+                <Label className="text-foreground">Öffentlich</Label>
                 <p className="text-xs text-muted-foreground mt-0.5">Jeder kann diesen Channel finden und beitreten</p>
               </div>
               <Switch checked={isPublic} onCheckedChange={setIsPublic} />
@@ -114,4 +114,3 @@ export default function CreateChannelPage() {
     </DashboardShell>
   )
 }
-

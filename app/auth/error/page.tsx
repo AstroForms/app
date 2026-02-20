@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button"
 function mapErrorMessage(error?: string) {
   switch (error) {
     case "AccessDenied":
-      return "Zugriff verweigert. Dein Account ist moeglicherweise gesperrt oder hat keine Berechtigung."
+      return "Zugriff verweigert. Dein Account ist möglicherweise gesperrt oder hat keine Berechtigung."
     case "Configuration":
-      return "Die Login-Konfiguration ist aktuell fehlerhaft. Bitte spaeter erneut versuchen."
+      return "Die Login-Konfiguration ist aktuell fehlerhaft. Bitte später erneut versuchen."
     case "OAuthAccountNotLinked":
-      return "Dieser Login-Provider ist nicht mit deinem Account verknuepft."
+      return "Dieser Login-Provider ist nicht mit deinem Account verknüpft."
     case "Verification":
       return "Die Verifizierung ist fehlgeschlagen oder abgelaufen."
     default:
@@ -36,7 +36,7 @@ export default async function AuthErrorPage({
         <p className="text-muted-foreground mb-6">{message}</p>
         {errorCode ? <p className="text-xs text-muted-foreground mb-4">Code: {errorCode}</p> : null}
         <Button asChild>
-          <Link href="/auth/login">Zurueck zum Login</Link>
+          <Link href="/auth/login">Zurück zum Login</Link>
         </Button>
       </div>
     </div>

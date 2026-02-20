@@ -58,7 +58,7 @@ export default function LoginPage() {
       case "AccessDenied":
         return "Zugriff verweigert. Dein Account ist eventuell eingeschränkt."
       case "Configuration":
-        return "Login ist gerade nicht verfuegbar (Configuration). Bitte später erneut versuchen."
+        return "Login ist gerade nicht verfügbar (Configuration). Bitte später erneut versuchen."
       case "OAuthAccountNotLinked":
         return "Dieser OAuth-Login ist nicht mit deinem Account verknüpft."
       default:

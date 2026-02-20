@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       where: { id: profileId },
     })
     if (deleted.count === 0) {
-      return NextResponse.json({ success: false, error: "User bereits geloescht oder nicht vorhanden." }, { status: 404 })
+      return NextResponse.json({ success: false, error: "User bereits gelöscht oder nicht vorhanden." }, { status: 404 })
     }
 
     await createAuditLog({
