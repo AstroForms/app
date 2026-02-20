@@ -114,7 +114,7 @@ function formatContent(template: string, ctx: { user?: string; channel?: string;
 export async function POST(req: Request) {
   const automationsEnabled = await isFeatureEnabled("automations")
   if (!automationsEnabled) {
-    return NextResponse.json({ error: "Automations disabled" }, { status: 403 })
+    return NextResponse.json({ ran: 0, skipped: 0, disabled: true })
   }
 
   const usesRunnerSecret = hasValidAutomationSecret(req)

@@ -62,13 +62,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (userRole !== "admin" && userRole !== "owner") {
+      return
+    }
+
     const runAutomations = () => {
       fetch("/api/automations/run", { method: "POST" }).catch(() => {})
     }
     runAutomations()
     const interval = setInterval(runAutomations, 60000)
     return () => clearInterval(interval)
-  }, [])
+  }, [userRole])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
