@@ -21,6 +21,14 @@ const authRoutes = [
   "/auth/sign-up",
 ]
 
+async function isUserCurrentlyBannedSafe(userId: string) {
+  try {
+    return await isUserCurrentlyBanned(userId)
+  } catch {
+    return false
+  }
+}
+
 export default auth(async (req) => {
   const { nextUrl } = req
   const sessionUserId =
@@ -53,7 +61,7 @@ export default auth(async (req) => {
     nextUrl.pathname.startsWith("/legal/privacy") ||
     nextUrl.pathname.startsWith("/legal/impressum")
 
-  if (sessionUserId && (await isUserCurrentlyBanned(sessionUserId))) {
+  if (sessionUserId && (await isUserCurrentlyBannedSafe(sessionUserId))) {
     const loginUrl = new URL("/auth/login", nextUrl)
     loginUrl.searchParams.set("error", "AccountBanned")
     const response = NextResponse.redirect(loginUrl)

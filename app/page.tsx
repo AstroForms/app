@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 }
 
 export default async function Page() {
-  const session = await auth()
+  const session = await auth().catch(() => null)
   const userId = session?.user?.id || null
 
   const now = Date.now()
