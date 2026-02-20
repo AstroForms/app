@@ -1,3 +1,4 @@
+export const runtime = "nodejs" // Required for NextAuth and crypto
 import { auth } from "@/lib/auth"
 import { NextResponse, type NextRequest } from "next/server"
 import { isUserCurrentlyBanned } from "@/lib/bans"
