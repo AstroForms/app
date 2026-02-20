@@ -1,5 +1,21 @@
 import { prisma } from "@/lib/db"
 
+async function ensureBanColumn(columnDefinition: string) {
+  try {
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE \`bans\`
+      ADD COLUMN ${columnDefinition}
+    `)
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : ""
+    const alreadyExists =
+      message.includes("duplicate column") ||
+      message.includes("already exists") ||
+      message.includes("duplicate")
+    if (!alreadyExists) throw error
+  }
+}
+
 export async function ensureBansTable() {
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS \`bans\` (
@@ -14,14 +30,11 @@ export async function ensureBansTable() {
   `)
 
   // Backfill/repair for older table variants.
-  await prisma.$executeRawUnsafe(`
-    ALTER TABLE \`bans\`
-      ADD COLUMN IF NOT EXISTS \`banned_by\` VARCHAR(191) NOT NULL DEFAULT '',
-      ADD COLUMN IF NOT EXISTS \`reason\` TEXT NULL,
-      ADD COLUMN IF NOT EXISTS \`is_global\` TINYINT(1) NOT NULL DEFAULT 1,
-      ADD COLUMN IF NOT EXISTS \`banned_until\` DATETIME NULL,
-      ADD COLUMN IF NOT EXISTS \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-  `)
+  await ensureBanColumn("`banned_by` VARCHAR(191) NOT NULL DEFAULT ''")
+  await ensureBanColumn("`reason` TEXT NULL")
+  await ensureBanColumn("`is_global` TINYINT(1) NOT NULL DEFAULT 1")
+  await ensureBanColumn("`banned_until` DATETIME NULL")
+  await ensureBanColumn("`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
 
   try {
     await prisma.$executeRawUnsafe(`
