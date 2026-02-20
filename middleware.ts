@@ -148,6 +148,7 @@ export default auth(async (req) => {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Skip all API routes, all Next internals, and all direct asset/file requests.
+    "/((?!api|_next|.*\\..*).*)",
   ],
 }
