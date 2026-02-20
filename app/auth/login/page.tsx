@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React from "react"
 
@@ -54,13 +54,13 @@ export default function LoginPage() {
       case "AccountBanned":
         return "Dein Account ist aktuell gesperrt. Bitte kontaktiere den Support."
       case "CredentialsSignin":
-        return "Login fehlgeschlagen. Prüfe Benutzername/E-Mail und Passwort."
+        return "Login fehlgeschlagen. PrÃ¼fe Benutzername/E-Mail und Passwort."
       case "AccessDenied":
-        return "Zugriff verweigert. Dein Account ist eventuell eingeschränkt."
+        return "Zugriff verweigert. Dein Account ist eventuell eingeschrÃ¤nkt."
       case "Configuration":
-        return "Login ist gerade nicht verfügbar (Configuration). Bitte später erneut versuchen."
+        return "Login ist gerade nicht verfÃ¼gbar (Configuration). Bitte spÃ¤ter erneut versuchen."
       case "OAuthAccountNotLinked":
-        return "Dieser OAuth-Login ist nicht mit deinem Account verknüpft."
+        return "Dieser OAuth-Login ist nicht mit deinem Account verknÃ¼pft."
       default:
         return "Anmeldung fehlgeschlagen. Bitte erneut versuchen."
     }
@@ -88,6 +88,9 @@ export default function LoginPage() {
       })
       if (!result) {
         throw new Error("Login fehlgeschlagen")
+      }
+      if (result.url && result.url.includes("error=AccountBanned")) {
+        throw new Error(mapAuthError("AccountBanned") || "Dein Account ist aktuell gesperrt.")
       }
       if (result.error || !result.ok) {
         throw new Error(mapAuthError(result.error) || "Ungültige Anmeldedaten")
@@ -223,3 +226,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

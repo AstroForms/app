@@ -181,10 +181,6 @@ providers.push(
           return slowAuthFailure()
         }
 
-        if (await isBannedSafe(user.id)) {
-          return slowAuthFailure()
-        }
-
         const isValid = await bcrypt.compare(
           plainPassword,
           user.password,
@@ -193,11 +189,14 @@ providers.push(
           return slowAuthFailure()
         }
 
+        const isBanned = await isBannedSafe(user.id)
+
         return {
           id: user.id,
           email: user.email,
           name: user.name,
           image: user.image,
+          banned: isBanned,
         }
       },
     }),
@@ -339,9 +338,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session
     },
     async signIn({ user }) {
+      if ((user as { banned?: boolean } | null)?.banned) {
+        return "/auth/login?error=AccountBanned"
+      }
+
       const userId = await resolveUserIdFromAuthCandidate({ id: user.id, email: user.email })
       if (!userId) return false
-      if (await isBannedSafe(userId)) return false
+      if (await isBannedSafe(userId)) {
+        return "/auth/login?error=AccountBanned"
+      }
       return true
     },
   },
