@@ -89,6 +89,11 @@ interface DMRequest {
   from_user: Profile
 }
 
+interface BlockStatus {
+  blocked_by_me: boolean
+  blocked_me: boolean
+}
+
 interface TenorGif {
   id: string
   title: string
@@ -189,6 +194,8 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   const [mobileShowChat, setMobileShowChat] = useState(false)
   const [targetUserHandled, setTargetUserHandled] = useState(false)
   const [isPageVisible, setIsPageVisible] = useState(true)
+  const [blockStatus, setBlockStatus] = useState<BlockStatus>({ blocked_by_me: false, blocked_me: false })
+  const [isUpdatingBlock, setIsUpdatingBlock] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -210,6 +217,12 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
         : conversation
     )))
   }, [])
+
+  const getOtherParticipantId = useCallback((conversation: Conversation | null) => {
+    if (!conversation || conversation.is_group) return null
+    const otherParticipant = conversation.participants.find((p) => p.user_id !== currentUserId)
+    return otherParticipant?.user_id ?? null
+  }, [currentUserId])
 
   const loadMessages = useCallback(async () => {
     if (!selectedConversation || messagesLoadingRef.current) return
@@ -537,6 +550,30 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
     return () => clearInterval(interval)
   }, [selectedConversation, loadMessages, isPageVisible])
 
+  useEffect(() => {
+    const loadBlockStatus = async () => {
+      const otherUserId = getOtherParticipantId(selectedConversation)
+      if (!otherUserId) {
+        setBlockStatus({ blocked_by_me: false, blocked_me: false })
+        return
+      }
+
+      const { data, error } = await supabase.rpc("is_blocked", {
+        p_current_user_id: currentUserId,
+        p_other_user_id: otherUserId
+      })
+
+      if (!error && data) {
+        setBlockStatus({
+          blocked_by_me: Boolean((data as any).blocked_by_me),
+          blocked_me: Boolean((data as any).blocked_me),
+        })
+      }
+    }
+
+    loadBlockStatus()
+  }, [selectedConversation, supabase, currentUserId, getOtherParticipantId])
+
   // Live updates via SSE for near-instant incoming messages.
   useEffect(() => {
     if (!selectedConversation || !isPageVisible) return
@@ -672,6 +709,10 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   // Send message
   const sendMessage = async () => {
     if ((!messageInput.trim() && !selectedImage) || !selectedConversation || isSending) return
+    if (blockStatus.blocked_by_me || blockStatus.blocked_me) {
+      toast.error("Nachrichten sind in diesem Chat blockiert")
+      return
+    }
 
     setIsSending(true)
 
@@ -751,6 +792,10 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
   // Send GIF
   const sendGif = async (gifUrl: string) => {
     if (!selectedConversation || isSending) return
+    if (blockStatus.blocked_by_me || blockStatus.blocked_me) {
+      toast.error("Nachrichten sind in diesem Chat blockiert")
+      return
+    }
 
     setIsSending(true)
     const encrypted = ""
@@ -832,6 +877,37 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
       toast.success("Anfrage abgelehnt")
       setDmRequests(prev => prev.filter(r => r.id !== requestId))
     }
+  }
+
+  const toggleBlockUser = async () => {
+    const otherUserId = getOtherParticipantId(selectedConversation)
+    if (!otherUserId || isUpdatingBlock) return
+
+    setIsUpdatingBlock(true)
+    if (blockStatus.blocked_by_me) {
+      const { error } = await supabase.rpc("unblock_user", {
+        p_blocker_id: currentUserId,
+        p_blocked_id: otherUserId,
+      })
+      if (!error) {
+        setBlockStatus((prev) => ({ ...prev, blocked_by_me: false }))
+        toast.success("Nutzer entblockt")
+      } else {
+        toast.error("Entblocken fehlgeschlagen")
+      }
+    } else {
+      const { error } = await supabase.rpc("block_user", {
+        p_blocker_id: currentUserId,
+        p_blocked_id: otherUserId,
+      })
+      if (!error) {
+        setBlockStatus((prev) => ({ ...prev, blocked_by_me: true }))
+        toast.success("Nutzer blockiert")
+      } else {
+        toast.error("Blockieren fehlgeschlagen")
+      }
+    }
+    setIsUpdatingBlock(false)
   }
 
   // Get conversation display info
@@ -1020,6 +1096,8 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
     }
 
     const info = getConversationInfo(selectedConversation)
+    const isDm = !selectedConversation.is_group
+    const messagesBlocked = blockStatus.blocked_by_me || blockStatus.blocked_me
 
     return (
       <div className="h-full flex flex-col">
@@ -1046,9 +1124,22 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon">
-            <MoreVertical className="h-5 w-5" />
-          </Button>
+          {isDm ? (
+            <Button variant="outline" size="sm" onClick={toggleBlockUser} disabled={isUpdatingBlock}>
+              {isUpdatingBlock ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Shield className="h-4 w-4 mr-1" />
+                  {blockStatus.blocked_by_me ? "Entblocken" : "Blockieren"}
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button variant="ghost" size="icon">
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+          )}
         </div>
 
         {/* Messages */}
@@ -1146,6 +1237,13 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
 
         {/* Input */}
         <div className="p-4 border-t border-border/50">
+          {messagesBlocked && (
+            <p className="text-xs text-muted-foreground mb-2">
+              {blockStatus.blocked_by_me
+                ? "Du hast diesen Nutzer blockiert. Entblocke ihn, um wieder zu schreiben."
+                : "Du wurdest von diesem Nutzer blockiert."}
+            </p>
+          )}
           <div className="flex items-center gap-2">
             <input
               type="file"
@@ -1162,6 +1260,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
                     variant="ghost"
                     size="icon"
                     onClick={() => fileInputRef.current?.click()}
+                    disabled={messagesBlocked}
                   >
                     <ImageIcon className="h-5 w-5" />
                   </Button>
@@ -1173,7 +1272,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
             {/* GIF Picker */}
             <Dialog open={showGifPicker} onOpenChange={setShowGifPicker}>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" disabled={messagesBlocked}>
                   <span className="text-lg">GIF</span>
                 </Button>
               </DialogTrigger>
@@ -1212,6 +1311,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                disabled={messagesBlocked}
               >
                 <Smile className="h-5 w-5" />
               </Button>
@@ -1232,6 +1332,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
               placeholder="Nachricht schreiben..."
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
+              disabled={messagesBlocked}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault()
@@ -1243,7 +1344,7 @@ export function MessagesContent({ currentUserId, targetUserId }: { currentUserId
 
             <Button
               onClick={sendMessage}
-              disabled={isSending || (!messageInput.trim() && !selectedImage)}
+              disabled={messagesBlocked || isSending || (!messageInput.trim() && !selectedImage)}
             >
               {isSending ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

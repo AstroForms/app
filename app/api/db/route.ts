@@ -242,6 +242,8 @@ function getModel(table: string) {
       return prisma.dmRequest
     case "message_read_receipts":
       return prisma.messageReadReceipt
+    case "blocked_users":
+      return prisma.blockedUser
     case "follows":
       return prisma.follow
     case "follow_requests":
@@ -516,6 +518,47 @@ export async function POST(req: NextRequest) {
     normalizeWriteData(table, mappedData)
 
     if (action === "insert") {
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      if (table === "messages") {
+        const senderId = mappedData.senderId
+        const conversationId = mappedData.conversationId
+        if (typeof senderId !== "string" || typeof conversationId !== "string") {
+          return NextResponse.json({ error: "Invalid message payload" }, { status: 400 })
+        }
+        if (senderId !== session.user.id) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+
+        const participants = await prisma.conversationParticipant.findMany({
+          where: { conversationId },
+          select: { userId: true },
+        })
+        const participantIds = participants.map((participant) => participant.userId)
+        if (!participantIds.includes(senderId)) {
+          return NextResponse.json({ error: "Sender is not part of this conversation" }, { status: 403 })
+        }
+
+        const relationFilters = participantIds
+          .filter((participantId) => participantId !== senderId)
+          .flatMap((participantId) => ([
+            { blockerId: senderId, blockedId: participantId },
+            { blockerId: participantId, blockedId: senderId },
+          ]))
+
+        if (relationFilters.length > 0) {
+          const blockedRelation = await prisma.blockedUser.findFirst({
+            where: { OR: relationFilters },
+            select: { id: true },
+          })
+          if (blockedRelation) {
+            return NextResponse.json({ error: "Blocked conversation" }, { status: 403 })
+          }
+        }
+      }
+
       const created = await (model as any).create({ data: mappedData, include })
 
       if (table === "channel_members") {

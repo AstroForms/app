@@ -26,6 +26,62 @@ function getLevelFromXp(totalXp: number) {
   return level
 }
 
+async function getDmPermissionState(senderId: string, recipientId: string) {
+  if (!senderId || !recipientId || senderId === recipientId) {
+    return { allowed: false, reason: "invalid_users" as const }
+  }
+
+  const blockedRelation = await prisma.blockedUser.findFirst({
+    where: {
+      OR: [
+        { blockerId: senderId, blockedId: recipientId },
+        { blockerId: recipientId, blockedId: senderId },
+      ],
+    },
+    select: { id: true },
+  })
+  if (blockedRelation) {
+    return { allowed: false, reason: "blocked" as const }
+  }
+
+  const recipient = await prisma.profile.findUnique({
+    where: { id: recipientId },
+    select: { dmPrivacy: true },
+  })
+  if (!recipient) {
+    return { allowed: false, reason: "recipient_not_found" as const }
+  }
+
+  if (recipient.dmPrivacy === "EVERYONE") {
+    return { allowed: true, reason: "allowed" as const }
+  }
+  if (recipient.dmPrivacy === "NOBODY") {
+    return { allowed: false, reason: "privacy" as const }
+  }
+  if (recipient.dmPrivacy === "FOLLOWERS") {
+    const follows = await prisma.follow.findFirst({
+      where: { followerId: senderId, followingId: recipientId },
+      select: { id: true },
+    })
+    return { allowed: Boolean(follows), reason: follows ? ("allowed" as const) : ("privacy" as const) }
+  }
+
+  const acceptedRequest = await prisma.dmRequest.findFirst({
+    where: {
+      status: "ACCEPTED",
+      OR: [
+        { senderId, recipientId },
+        { senderId: recipientId, recipientId: senderId },
+      ],
+    },
+    select: { id: true },
+  })
+  return {
+    allowed: Boolean(acceptedRequest),
+    reason: acceptedRequest ? ("allowed" as const) : ("request_required" as const),
+  }
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ name: string }> }) {
   const session = await auth()
   if (!session?.user?.id) {
@@ -152,8 +208,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
   if (name === "block_user") {
     const blockerId = body.p_blocker_id as string
     const blockedId = body.p_blocked_id as string
-    await prisma.blockedUser.create({
-      data: { blockerId, blockedId, reason: body.p_reason || null },
+    if (!blockerId || !blockedId) {
+      return NextResponse.json({ error: "Missing block users" }, { status: 400 })
+    }
+    if (blockerId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    if (blockerId === blockedId) {
+      return NextResponse.json({ error: "Cannot block yourself" }, { status: 400 })
+    }
+    await prisma.blockedUser.upsert({
+      where: { blockerId_blockedId: { blockerId, blockedId } },
+      create: { blockerId, blockedId, reason: (body.p_reason as string) || null },
+      update: { reason: (body.p_reason as string) || null },
+    })
+
+    await prisma.follow.deleteMany({
+      where: {
+        OR: [
+          { followerId: blockerId, followingId: blockedId },
+          { followerId: blockedId, followingId: blockerId },
+        ],
+      },
+    })
+
+    await prisma.dmRequest.deleteMany({
+      where: {
+        OR: [
+          { senderId: blockerId, recipientId: blockedId },
+          { senderId: blockedId, recipientId: blockerId },
+        ],
+      },
     })
     return NextResponse.json({ data: true })
   }
@@ -161,8 +246,40 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
   if (name === "unblock_user") {
     const blockerId = body.p_blocker_id as string
     const blockedId = body.p_blocked_id as string
+    if (!blockerId || !blockedId) {
+      return NextResponse.json({ error: "Missing unblock users" }, { status: 400 })
+    }
+    if (blockerId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
     await prisma.blockedUser.deleteMany({ where: { blockerId, blockedId } })
     return NextResponse.json({ data: true })
+  }
+
+  if (name === "is_blocked") {
+    const currentUserId = pickString(body, ["p_current_user_id"])
+    const otherUserId = pickString(body, ["p_other_user_id"])
+    if (!currentUserId || !otherUserId) {
+      return NextResponse.json({ error: "Missing users" }, { status: 400 })
+    }
+    if (currentUserId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const [blockedByMe, blockedMe] = await Promise.all([
+      prisma.blockedUser.findFirst({
+        where: { blockerId: currentUserId, blockedId: otherUserId },
+        select: { id: true },
+      }),
+      prisma.blockedUser.findFirst({
+        where: { blockerId: otherUserId, blockedId: currentUserId },
+        select: { id: true },
+      }),
+    ])
+
+    return NextResponse.json({
+      data: { blocked_by_me: Boolean(blockedByMe), blocked_me: Boolean(blockedMe) },
+    })
   }
 
   if (name === "can_send_dm") {
@@ -174,7 +291,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
     if (senderId !== session.user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
-    return NextResponse.json({ data: true })
+    const permission = await getDmPermissionState(senderId, recipientId)
+    return NextResponse.json({ data: permission.allowed })
   }
 
   if (name === "send_dm_request") {
@@ -186,6 +304,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
     }
     if (senderId !== session.user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    const permission = await getDmPermissionState(senderId, recipientId)
+    if (permission.reason === "blocked") {
+      return NextResponse.json({ error: "User is blocked" }, { status: 403 })
+    }
+    const recipient = await prisma.profile.findUnique({
+      where: { id: recipientId },
+      select: { dmPrivacy: true },
+    })
+    if (!recipient) {
+      return NextResponse.json({ error: "Recipient not found" }, { status: 404 })
+    }
+    if (recipient.dmPrivacy !== "REQUEST") {
+      return NextResponse.json({ error: "DM requests are not allowed for this user" }, { status: 400 })
     }
     await prisma.dmRequest.upsert({
       where: { senderId_recipientId: { senderId, recipientId } },
@@ -206,6 +338,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
     }
     if (userA === userB) {
       return NextResponse.json({ error: "Cannot create self conversation" }, { status: 400 })
+    }
+    const permission = await getDmPermissionState(userA, userB)
+    if (!permission.allowed) {
+      const status = permission.reason === "blocked" ? 403 : 400
+      return NextResponse.json({ error: "Conversation not allowed" }, { status })
     }
 
     const existing = await prisma.conversation.findFirst({
@@ -250,6 +387,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ nam
     }
     if (existingRequest.recipientId !== session.user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    const permission = await getDmPermissionState(existingRequest.senderId, existingRequest.recipientId)
+    if (!permission.allowed) {
+      return NextResponse.json({ error: "Conversation not allowed" }, { status: 403 })
     }
     const request = await prisma.dmRequest.update({
       where: { id: requestId },
