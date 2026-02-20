@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { AdminContent } from "@/components/admin-content"
 import { prisma } from "@/lib/db"
+import { listRecentBans } from "@/lib/bans"
 
 export default async function AdminPage() {
   const supabase = await createDbServer()
@@ -46,11 +47,7 @@ export default async function AdminPage() {
     .eq("is_verified", false)
     .order("created_at", { ascending: false })
 
-  const { data: bans } = await supabase
-    .from("bans")
-    .select("*, profiles!bans_user_id_fkey(username)")
-    .order("created_at", { ascending: false })
-    .limit(50)
+  const bans = await listRecentBans(50)
 
   const promotionModel = (prisma as unknown as {
     channelPromotionRequest?: {
@@ -96,7 +93,7 @@ export default async function AdminPage() {
         reports={reports || []}
         unverifiedChannels={unverifiedChannels || []}
         unverifiedBots={unverifiedBots || []}
-        bans={bans || []}
+        bans={bans}
         promotionRequests={promotionRequests.map((request) => ({
           id: request.id,
           channel_id: request.channelId,

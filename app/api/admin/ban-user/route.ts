@@ -70,15 +70,29 @@ export async function POST(req: NextRequest) {
         : new Date(Date.now() + (DURATION_TO_HOURS[duration] || 24) * 60 * 60 * 1000)
 
     await ensureBansTable()
-    await prisma.$executeRaw`
-      DELETE FROM \`bans\`
-      WHERE \`user_id\` = ${profileId}
-    `
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        DELETE FROM \`bans\`
+        WHERE \`user_id\` = ${profileId}
+      `
 
-    await prisma.$executeRaw`
-      INSERT INTO \`bans\` (\`id\`, \`user_id\`, \`banned_by\`, \`reason\`, \`is_global\`, \`banned_until\`)
-      VALUES (${randomUUID()}, ${profileId}, ${meId}, ${reason || null}, ${1}, ${bannedUntil})
+      await tx.$executeRaw`
+        INSERT INTO \`bans\` (\`id\`, \`user_id\`, \`banned_by\`, \`reason\`, \`is_global\`, \`banned_until\`)
+        VALUES (${randomUUID()}, ${profileId}, ${meId}, ${reason || null}, ${1}, ${bannedUntil})
+      `
+    })
+
+    const confirmBan = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT \`id\`
+      FROM \`bans\`
+      WHERE \`user_id\` = ${profileId}
+        AND (\`banned_until\` IS NULL OR \`banned_until\` > NOW())
+      LIMIT 1
     `
+    if (confirmBan.length === 0) {
+      throw new Error("Ban konnte nicht gespeichert werden")
+    }
+
     await prisma.session.deleteMany({
       where: { userId: profileId },
     })
