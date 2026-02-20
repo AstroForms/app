@@ -9,25 +9,17 @@ export default async function DiscoverPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect("/auth/login")
 
-    const { data: channels } = await supabase
-      .from("channels")
-      .select("*")
-      .eq("is_public", true)
-      .limit(50)
-
-  // Get actual member counts
-    const channelIds = (channels || []).map((c: { id: string }) => c.id)
-    const memberCounts: Record<string, number> = {}
-  
-    if (channelIds.length > 0) {
-      for (const channelId of channelIds) {
-        const { count } = await supabase
-          .from("channel_members")
-          .select("*", { count: "exact", head: true })
-          .eq("channel_id", channelId)
-        memberCounts[channelId] = count || 0
-      }
-    }
+    const [{ data: channels }, { data: memberships }] = await Promise.all([
+      supabase
+        .from("channels")
+        .select("*")
+        .eq("is_public", true)
+        .limit(50),
+      supabase
+        .from("channel_members")
+        .select("channel_id")
+        .eq("user_id", user.id),
+    ])
 
     const now = Date.now()
 
@@ -43,7 +35,7 @@ export default async function DiscoverPage() {
 
         return {
           ...c,
-          member_count: memberCounts[c.id] || 0,
+          member_count: typeof c.member_count === "number" ? c.member_count : 0,
           is_boosted: isBoosted,
         }
       })
@@ -79,11 +71,6 @@ export default async function DiscoverPage() {
           return b.member_count - a.member_count
         },
       )
-
-    const { data: memberships } = await supabase
-      .from("channel_members")
-      .select("channel_id")
-      .eq("user_id", user.id)
 
     const joinedIds = new Set<string>((memberships || []).map((m: { channel_id: string }) => m.channel_id))
 

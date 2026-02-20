@@ -14,6 +14,8 @@ const DEFAULT_FLAGS: FeatureFlags = {
 }
 
 let initPromise: Promise<void> | null = null
+let flagsCache: { value: FeatureFlags; expiresAt: number } | null = null
+const FLAGS_CACHE_TTL_MS = 30_000
 
 async function ensureFeatureFlagsTable() {
   if (!initPromise) {
@@ -54,6 +56,11 @@ function normalizeEnabled(value: unknown): boolean {
 }
 
 export async function getFeatureFlags(): Promise<FeatureFlags> {
+  const now = Date.now()
+  if (flagsCache && flagsCache.expiresAt > now) {
+    return { ...flagsCache.value }
+  }
+
   try {
     await ensureFeatureFlagsTable()
 
@@ -68,6 +75,10 @@ export async function getFeatureFlags(): Promise<FeatureFlags> {
       }
     }
 
+    flagsCache = {
+      value: { ...flags },
+      expiresAt: now + FLAGS_CACHE_TTL_MS,
+    }
     return flags
   } catch {
     return { ...DEFAULT_FLAGS }
@@ -86,4 +97,5 @@ export async function setFeatureFlag(key: FeatureKey, enabled: boolean): Promise
     VALUES (${key}, ${enabled ? 1 : 0})
     ON DUPLICATE KEY UPDATE enabled = VALUES(enabled)
   `
+  flagsCache = null
 }

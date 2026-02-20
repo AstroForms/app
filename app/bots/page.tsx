@@ -33,32 +33,31 @@ export default async function BotsPage() {
     })
 
     const botIds = bots.map((bot) => bot.id)
-    const automations = botIds.length
-      ? await prisma.botAutomation.findMany({
-          where: { botId: { in: botIds } },
-          include: { bot: { select: { name: true } } },
-          orderBy: { createdAt: "desc" },
-        })
-      : []
-
-    const channels = await prisma.channel.findMany({
-      where: { ownerId: userId },
-      select: { id: true, name: true },
-    })
-
-    const activeRules = botIds.length
-      ? await prisma.botActiveRule.findMany({
-          where: { botId: { in: botIds } },
-        })
-      : []
-
-    const pendingInvites = botIds.length
-      ? await prisma.botChannelInvite.findMany({
-          where: { botId: { in: botIds }, status: "PENDING" },
-          include: { channel: { select: { id: true, name: true } } },
-          orderBy: { createdAt: "desc" },
-        })
-      : []
+    const [automations, channels, activeRules, pendingInvites] = await Promise.all([
+      botIds.length
+        ? prisma.botAutomation.findMany({
+            where: { botId: { in: botIds } },
+            include: { bot: { select: { name: true } } },
+            orderBy: { createdAt: "desc" },
+          })
+        : Promise.resolve([]),
+      prisma.channel.findMany({
+        where: { ownerId: userId },
+        select: { id: true, name: true },
+      }),
+      botIds.length
+        ? prisma.botActiveRule.findMany({
+            where: { botId: { in: botIds } },
+          })
+        : Promise.resolve([]),
+      botIds.length
+        ? prisma.botChannelInvite.findMany({
+            where: { botId: { in: botIds }, status: "PENDING" },
+            include: { channel: { select: { id: true, name: true } } },
+            orderBy: { createdAt: "desc" },
+          })
+        : Promise.resolve([]),
+    ])
 
     return (
       <DashboardShell>
