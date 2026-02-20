@@ -148,9 +148,8 @@ Bitte möglichst:
 - Falls jemals Secrets committed wurden: sofort rotieren
 - Produktionszugänge nur über sichere Umgebungsvariablen verwalten
 - Änderungen immer zuerst lokal/staging testen, bevor sie in Produktion ausgerollt werden
-
 ## Lizenz
 
-Aktuell: **keine Lizenz festgelegt**.
+Dieses Projekt steht unter der **GNU General Public License v3.0 (GPL-3.0)**.
 
-Wenn du möchtest, stelle auf eine OSS-Lizenz um (z. B. MIT) und füge eine `LICENSE` Datei hinzu.
+Siehe `LICENSE`.
