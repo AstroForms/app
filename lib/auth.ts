@@ -54,6 +54,14 @@ if (isProd && !authSecret) {
   console.error("[auth] AUTH_SECRET/NEXTAUTH_SECRET missing in production, using fallback secret.")
 }
 
+const AUTH_CACHE_TTL_MS = 30_000
+const twoFactorEnabledCache = new Map<string, { value: boolean; expiresAt: number }>()
+const acceptedTermsCache = new Map<string, { value: string | null; expiresAt: number }>()
+const profileCache = new Map<
+  string,
+  { value: { username: string | null; role: string; avatarUrl: string | null } | null; expiresAt: number }
+>()
+
 async function isBannedSafe(userId: string) {
   try {
     return await isUserCurrentlyBanned(userId)
@@ -78,25 +86,52 @@ async function resolveUserIdFromAuthCandidate(user: { id?: string | null; email?
 }
 
 async function getTwoFactorEnabled(userId: string) {
+  const cached = twoFactorEnabledCache.get(userId)
+  if (cached && cached.expiresAt > Date.now()) return cached.value
+
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { twoFactorEnabled: true },
     })
-    return Boolean(user?.twoFactorEnabled)
+    const value = Boolean(user?.twoFactorEnabled)
+    twoFactorEnabledCache.set(userId, { value, expiresAt: Date.now() + AUTH_CACHE_TTL_MS })
+    return value
   } catch {
     return false
   }
 }
 
 async function getAcceptedTermsVersion(userId: string) {
+  const cached = acceptedTermsCache.get(userId)
+  if (cached && cached.expiresAt > Date.now()) return cached.value
+
   try {
     const acceptance = await prisma.termsAcceptance.findFirst({
       where: { userId },
       orderBy: { acceptedAt: "desc" },
       select: { version: true },
     })
-    return acceptance?.version ?? null
+    const value = acceptance?.version ?? null
+    acceptedTermsCache.set(userId, { value, expiresAt: Date.now() + AUTH_CACHE_TTL_MS })
+    return value
+  } catch {
+    return null
+  }
+}
+
+async function getProfileSnapshot(userId: string) {
+  const cached = profileCache.get(userId)
+  if (cached && cached.expiresAt > Date.now()) return cached.value
+
+  try {
+    const profile = await prisma.profile.findUnique({
+      where: { id: userId },
+      select: { username: true, role: true, avatarUrl: true },
+    })
+    const value = profile ?? null
+    profileCache.set(userId, { value, expiresAt: Date.now() + AUTH_CACHE_TTL_MS })
+    return value
   } catch {
     return null
   }
@@ -330,9 +365,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       try {
         // Profile enrichment is optional; login/session must not fail if DB lookup hiccups.
-        const profile = await prisma.profile.findUnique({
-          where: { id: resolvedUserId },
-        })
+        const profile = await getProfileSnapshot(resolvedUserId)
 
         if (profile) {
           session.user.username = profile.username

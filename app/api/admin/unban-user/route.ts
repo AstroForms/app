@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { createAuditLog } from "@/lib/audit"
-import { ensureBansTable } from "@/lib/bans"
+import { ensureBansTable, setUserBanCache } from "@/lib/bans"
 
 async function requireAdmin() {
   const session = await auth()
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       DELETE FROM \`bans\`
       WHERE \`user_id\` = ${profileId}
     `
+    setUserBanCache(profileId, false)
 
     await createAuditLog({
       actorId: meId!,

@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/db"
 
+let bansSchemaInitPromise: Promise<void> | null = null
+const BAN_STATUS_TTL_MS = 20_000
+const banStatusCache = new Map<string, { banned: boolean; expiresAt: number }>()
+
 async function ensureBanColumn(columnDefinition: string) {
   try {
     await prisma.$executeRawUnsafe(`
@@ -17,41 +21,65 @@ async function ensureBanColumn(columnDefinition: string) {
 }
 
 export async function ensureBansTable() {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS \`bans\` (
-      \`id\` VARCHAR(191) PRIMARY KEY,
-      \`user_id\` VARCHAR(191) NOT NULL,
-      \`banned_by\` VARCHAR(191) NOT NULL,
-      \`reason\` TEXT NULL,
-      \`is_global\` TINYINT(1) NOT NULL DEFAULT 1,
-      \`banned_until\` DATETIME NULL,
-      \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `)
+  if (!bansSchemaInitPromise) {
+    bansSchemaInitPromise = (async () => {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS \`bans\` (
+          \`id\` VARCHAR(191) PRIMARY KEY,
+          \`user_id\` VARCHAR(191) NOT NULL,
+          \`banned_by\` VARCHAR(191) NOT NULL,
+          \`reason\` TEXT NULL,
+          \`is_global\` TINYINT(1) NOT NULL DEFAULT 1,
+          \`banned_until\` DATETIME NULL,
+          \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `)
 
-  // Backfill/repair for older table variants.
-  await ensureBanColumn("`banned_by` VARCHAR(191) NOT NULL DEFAULT ''")
-  await ensureBanColumn("`reason` TEXT NULL")
-  await ensureBanColumn("`is_global` TINYINT(1) NOT NULL DEFAULT 1")
-  await ensureBanColumn("`banned_until` DATETIME NULL")
-  await ensureBanColumn("`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
+      // Backfill/repair for older table variants.
+      await ensureBanColumn("`banned_by` VARCHAR(191) NOT NULL DEFAULT ''")
+      await ensureBanColumn("`reason` TEXT NULL")
+      await ensureBanColumn("`is_global` TINYINT(1) NOT NULL DEFAULT 1")
+      await ensureBanColumn("`banned_until` DATETIME NULL")
+      await ensureBanColumn("`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP")
 
-  try {
-    await prisma.$executeRawUnsafe(`
-      CREATE INDEX \`idx_bans_user_id\`
-      ON \`bans\` (\`user_id\`)
-    `)
-  } catch (error) {
-    const message = error instanceof Error ? error.message.toLowerCase() : ""
-    const alreadyExists =
-      message.includes("duplicate key name") ||
-      message.includes("already exists")
-    if (!alreadyExists) throw error
+      try {
+        await prisma.$executeRawUnsafe(`
+          CREATE INDEX \`idx_bans_user_id\`
+          ON \`bans\` (\`user_id\`)
+        `)
+      } catch (error) {
+        const message = error instanceof Error ? error.message.toLowerCase() : ""
+        const alreadyExists =
+          message.includes("duplicate key name") ||
+          message.includes("already exists")
+        if (!alreadyExists) throw error
+      }
+    })().catch((error) => {
+      bansSchemaInitPromise = null
+      throw error
+    })
   }
+
+  await bansSchemaInitPromise
+}
+
+export function setUserBanCache(userId: string, banned: boolean) {
+  if (!userId) return
+  banStatusCache.set(userId, { banned, expiresAt: Date.now() + BAN_STATUS_TTL_MS })
+}
+
+export function clearUserBanCache(userId: string) {
+  if (!userId) return
+  banStatusCache.delete(userId)
 }
 
 export async function isUserCurrentlyBanned(userId: string) {
   if (!userId) return false
+
+  const cached = banStatusCache.get(userId)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.banned
+  }
 
   try {
     await ensureBansTable()
@@ -64,7 +92,9 @@ export async function isUserCurrentlyBanned(userId: string) {
       LIMIT 1
     `
 
-    return rows.length > 0
+    const banned = rows.length > 0
+    setUserBanCache(userId, banned)
+    return banned
   } catch (error) {
     const message = error instanceof Error ? error.message.toLowerCase() : ""
     const isMissingTable =
@@ -76,6 +106,7 @@ export async function isUserCurrentlyBanned(userId: string) {
       message.includes("permission denied")
 
     if (isMissingTable || isPermissionIssue) {
+      setUserBanCache(userId, false)
       return false
     }
 

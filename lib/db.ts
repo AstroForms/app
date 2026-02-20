@@ -36,7 +36,7 @@ function createPrismaClient() {
     password: safeDecode(parsed.password),
     database: parsed.pathname.replace(/^\/+/, ""),
     allowPublicKeyRetrieval: true,
-    connectionLimit: 10,
+    connectionLimit,
     acquireTimeout: 15000,
     connectTimeout: 10000,
   })

@@ -2,7 +2,7 @@ import { randomUUID } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { ensureBansTable } from "@/lib/bans"
+import { ensureBansTable, setUserBanCache } from "@/lib/bans"
 import { createAuditLog } from "@/lib/audit"
 import { ensureAdminModerationSchema, ensureReportActionsTable } from "@/lib/report-moderation"
 
@@ -331,6 +331,7 @@ export async function POST(req: NextRequest) {
         INSERT INTO \`bans\` (\`id\`, \`user_id\`, \`banned_by\`, \`reason\`, \`is_global\`, \`banned_until\`)
         VALUES (${randomUUID()}, ${targetUserId}, ${meId!}, ${notes || "Report moderation ban"}, ${1}, ${bannedUntil})
       `
+      setUserBanCache(targetUserId, true)
       await prisma.session.deleteMany({ where: { userId: targetUserId } })
       await prisma.report.update({
         where: { id: reportId },

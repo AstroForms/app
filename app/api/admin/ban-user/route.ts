@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { createAuditLog } from "@/lib/audit"
-import { ensureBansTable } from "@/lib/bans"
+import { ensureBansTable, setUserBanCache } from "@/lib/bans"
 
 const DURATION_TO_HOURS: Record<string, number> = {
   "1h": 1,
@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
     if (confirmBan.length === 0) {
       throw new Error("Ban konnte nicht gespeichert werden")
     }
+    setUserBanCache(profileId, true)
 
     await prisma.session.deleteMany({
       where: { userId: profileId },
