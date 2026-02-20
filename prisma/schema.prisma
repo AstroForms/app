@@ -138,6 +138,7 @@ model Profile {
   postLikes           PostLike[]
   postSaves           PostSave[]
   postComments        PostComment[]
+  commentReactions    CommentReaction[]
   botsOwned           Bot[]
   reportsCreated      Report[]   @relation("ReporterReports")
   reportsReviewed     Report[]   @relation("ReviewerReports")
@@ -362,18 +363,39 @@ model PostSave {
 }
 
 model PostComment {
-  id        String   @id @default(cuid())
-  postId    String   @map("post_id")
-  userId    String   @map("user_id")
-  content   String   @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(cuid())
+  postId          String   @map("post_id")
+  userId          String   @map("user_id")
+  parentCommentId String?  @map("parent_comment_id")
+  content         String   @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  post Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post          Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user          Profile           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentComment PostComment?      @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies       PostComment[]     @relation("CommentReplies")
+  reactions     CommentReaction[]
 
   @@index([postId])
+  @@index([parentCommentId])
   @@map("post_comments")
+}
+
+model CommentReaction {
+  id        String   @id @default(cuid())
+  commentId String   @map("comment_id")
+  userId    String   @map("user_id")
+  emoji     String   @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  comment PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    Profile     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId, emoji])
+  @@index([commentId])
+  @@index([userId])
+  @@map("comment_reactions")
 }
 
 // ==========================================

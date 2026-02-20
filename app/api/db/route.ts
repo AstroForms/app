@@ -212,6 +212,8 @@ function getModel(table: string) {
       return prisma.postSave
     case "post_comments":
       return prisma.postComment
+    case "comment_reactions":
+      return (prisma as any).commentReaction
     case "reports":
       return prisma.report
     case "bots":
@@ -262,6 +264,8 @@ function getInclude(table: string) {
         parentPost: { include: { user: { select: { username: true } } } },
       }
     case "post_comments":
+      return { user: { select: { id: true, username: true, avatarUrl: true, displayName: true } } }
+    case "comment_reactions":
       return { user: { select: { id: true, username: true, avatarUrl: true, displayName: true } } }
     case "channel_members":
       return {
@@ -337,6 +341,17 @@ function mapRecord(table: string, record: any) {
   }
 
   if (table === "post_comments") {
+    output.profiles = record.user
+      ? {
+          id: record.user.id,
+          username: record.user.username,
+          avatar_url: record.user.avatarUrl,
+          display_name: record.user.displayName,
+        }
+      : null
+  }
+
+  if (table === "comment_reactions") {
     output.profiles = record.user
       ? {
           id: record.user.id,

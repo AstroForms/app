@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -55,6 +55,7 @@ interface PostComment {
   content: string
   created_at: string
   user_id: string
+  parent_comment_id?: string | null
   profiles: {
     id: string
     username: string
@@ -62,6 +63,8 @@ interface PostComment {
     display_name: string
   }
 }
+
+const COMMENT_REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥"] as const
 
 interface ProfilePost {
   id: string
@@ -138,6 +141,11 @@ function ProfilePostItem({
   const [comments, setComments] = useState<PostComment[]>([])
   const [newComment, setNewComment] = useState("")
   const [isPostingComment, setIsPostingComment] = useState(false)
+  const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null)
+  const [replyComment, setReplyComment] = useState("")
+  const [commentReactions, setCommentReactions] = useState<Record<string, Record<string, number>>>({})
+  const [userReactions, setUserReactions] = useState<Record<string, string[]>>({})
+  const [isReactingCommentId, setIsReactingCommentId] = useState<string | null>(null)
   const [showRemixDialog, setShowRemixDialog] = useState(false)
   const [remixContent, setRemixContent] = useState("")
   const [isRemixing, setIsRemixing] = useState(false)
@@ -221,6 +229,48 @@ function ProfilePostItem({
     toast.success("Link kopiert!")
   }
 
+  const refreshCommentCount = async () => {
+    const supabase = createDbClient()
+    const { count } = await supabase
+      .from("post_comments")
+      .select("*", { count: "exact", head: true })
+      .eq("post_id", post.id)
+    setCommentCount(count || 0)
+  }
+
+  const loadCommentReactions = async (commentRows: PostComment[]) => {
+    if (commentRows.length === 0) {
+      setCommentReactions({})
+      setUserReactions({})
+      return
+    }
+    const supabase = createDbClient()
+    const commentIds = commentRows.map((comment) => comment.id)
+    const { data } = await supabase
+      .from("comment_reactions")
+      .select("comment_id, emoji, user_id")
+      .in("comment_id", commentIds)
+
+    const reactionCounts: Record<string, Record<string, number>> = {}
+    const mine: Record<string, string[]> = {}
+
+    for (const row of data || []) {
+      const entry = row as { comment_id?: string; emoji?: string; user_id?: string }
+      if (!entry.comment_id || !entry.emoji) continue
+      reactionCounts[entry.comment_id] = reactionCounts[entry.comment_id] || {}
+      reactionCounts[entry.comment_id][entry.emoji] = (reactionCounts[entry.comment_id][entry.emoji] || 0) + 1
+      if (entry.user_id === userId) {
+        mine[entry.comment_id] = mine[entry.comment_id] || []
+        if (!mine[entry.comment_id].includes(entry.emoji)) {
+          mine[entry.comment_id].push(entry.emoji)
+        }
+      }
+    }
+
+    setCommentReactions(reactionCounts)
+    setUserReactions(mine)
+  }
+
   const loadComments = async () => {
     const supabase = createDbClient()
     const { data } = await supabase
@@ -228,7 +278,9 @@ function ProfilePostItem({
       .select("*, profiles(id, username, avatar_url, display_name)")
       .eq("post_id", post.id)
       .order("created_at", { ascending: true })
-    setComments(data || [])
+    const commentRows = (data || []) as PostComment[]
+    setComments(commentRows)
+    await loadCommentReactions(commentRows)
   }
 
   const handleOpenComments = async () => {
@@ -236,20 +288,27 @@ function ProfilePostItem({
     await loadComments()
   }
 
-  const handlePostComment = async () => {
-    if (!userId || !newComment.trim()) return
+  const handlePostComment = async (parentCommentId?: string | null) => {
+    const content = parentCommentId ? replyComment : newComment
+    if (!userId || !content.trim()) return
     setIsPostingComment(true)
     const supabase = createDbClient()
     const { error } = await supabase.from("post_comments").insert({
       post_id: post.id,
       user_id: userId,
-      content: newComment.trim(),
+      parent_comment_id: parentCommentId || null,
+      content: content.trim(),
     })
     if (error) {
       toast.error(error.message)
     } else {
-      setNewComment("")
-      setCommentCount(c => c + 1)
+      if (parentCommentId) {
+        setReplyComment("")
+        setReplyingToCommentId(null)
+      } else {
+        setNewComment("")
+      }
+      await refreshCommentCount()
       await loadComments()
       toast.success("Kommentar gepostet!")
     }
@@ -259,9 +318,130 @@ function ProfilePostItem({
   const handleDeleteComment = async (commentId: string) => {
     const supabase = createDbClient()
     await supabase.from("post_comments").delete().eq("id", commentId)
-    setCommentCount(c => c - 1)
+    await refreshCommentCount()
     await loadComments()
     toast.success("Kommentar gelöscht")
+  }
+
+  const handleToggleCommentReaction = async (commentId: string, emoji: string) => {
+    if (!userId) {
+      toast.error("Melde dich an, um zu reagieren")
+      return
+    }
+    const hasReacted = (userReactions[commentId] || []).includes(emoji)
+    const supabase = createDbClient()
+    setIsReactingCommentId(commentId)
+
+    const result = hasReacted
+      ? await supabase.from("comment_reactions").delete().eq("comment_id", commentId).eq("emoji", emoji).eq("user_id", userId)
+      : await supabase.from("comment_reactions").insert({ comment_id: commentId, emoji, user_id: userId })
+
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      await loadComments()
+    }
+    setIsReactingCommentId(null)
+  }
+
+  const commentsByParent = useMemo(() => {
+    const grouped: Record<string, PostComment[]> = {}
+    for (const comment of comments) {
+      const key = comment.parent_comment_id || "root"
+      grouped[key] = grouped[key] || []
+      grouped[key].push(comment)
+    }
+    return grouped
+  }, [comments])
+
+  const renderCommentTree = (parentCommentId: string | null = null, depth = 0) => {
+    const key = parentCommentId || "root"
+    const groupedComments = commentsByParent[key] || []
+    return groupedComments.map((comment) => {
+      const reactions = commentReactions[comment.id] || {}
+      const myReactions = userReactions[comment.id] || []
+
+      return (
+        <div key={comment.id} className={depth > 0 ? "ml-8 border-l border-border/30 pl-4" : ""}>
+          <div className="flex gap-3 group/comment rounded-lg p-2 hover:bg-secondary/20 transition-colors">
+            <Link href={`/profile/${comment.profiles.id}`}>
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={comment.profiles.avatar_url || undefined} />
+                <AvatarFallback className="bg-secondary text-foreground text-xs">
+                  {comment.profiles.username?.charAt(0).toUpperCase() || "?"}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Link href={`/profile/${comment.profiles.id}`} className="text-sm font-medium text-foreground hover:underline">
+                  {comment.profiles.display_name || comment.profiles.username}
+                </Link>
+                <span className="text-xs text-muted-foreground" suppressHydrationWarning>
+                  {new Date(comment.created_at).toLocaleDateString("de-DE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                </span>
+                {comment.user_id === userId && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover/comment:opacity-100 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleDeleteComment(comment.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap">{comment.content}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {COMMENT_REACTION_EMOJIS.map((emoji) => {
+                  const count = reactions[emoji] || 0
+                  const active = myReactions.includes(emoji)
+                  return (
+                    <Button
+                      key={`${comment.id}-${emoji}`}
+                      variant="ghost"
+                      size="sm"
+                      className={`h-7 rounded-full px-2.5 text-xs ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                      disabled={isReactingCommentId === comment.id}
+                      onClick={() => handleToggleCommentReaction(comment.id, emoji)}
+                    >
+                      <span>{emoji}</span>
+                      {count > 0 && <span>{count}</span>}
+                    </Button>
+                  )
+                })}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 rounded-full px-3 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setReplyingToCommentId((current) => current === comment.id ? null : comment.id)}
+                >
+                  Antworten
+                </Button>
+              </div>
+              {replyingToCommentId === comment.id && userId && (
+                <div className="mt-2 flex gap-2">
+                  <Textarea
+                    value={replyComment}
+                    onChange={(event) => setReplyComment(event.target.value)}
+                    placeholder={`Antwort an ${comment.profiles.display_name || comment.profiles.username}...`}
+                    className="bg-secondary/30 border-border/50 resize-none text-sm min-h-[72px]"
+                  />
+                  <Button
+                    onClick={() => handlePostComment(comment.id)}
+                    disabled={isPostingComment || !replyComment.trim()}
+                    className="self-end"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-2 space-y-2">{renderCommentTree(comment.id, depth + 1)}</div>
+        </div>
+      )
+    })
   }
 
   const handleRemix = async () => {
@@ -409,48 +589,16 @@ function ProfilePostItem({
 
       {/* Comments Dialog */}
       <Dialog open={showComments} onOpenChange={setShowComments}>
-        <DialogContent className="glass border-border/50 max-w-lg max-h-[80vh] flex flex-col">
+        <DialogContent className="glass border-border/50 max-w-3xl w-[95vw] max-h-[88vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-foreground">Kommentare ({commentCount})</DialogTitle>
           </DialogHeader>
           
-          <div className="flex-1 overflow-auto py-4 space-y-3">
+          <div className="flex-1 overflow-auto py-4 space-y-4">
             {comments.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Noch keine Kommentare</p>
             ) : (
-              comments.map((comment) => (
-                <div key={comment.id} className="flex gap-2.5 group/comment">
-                  <Link href={`/profile/${comment.profiles.id}`}>
-                    <Avatar className="h-7 w-7">
-                      <AvatarImage src={comment.profiles.avatar_url || undefined} />
-                      <AvatarFallback className="bg-secondary text-foreground text-[10px]">
-                        {comment.profiles.username?.charAt(0).toUpperCase() || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Link>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/profile/${comment.profiles.id}`} className="text-xs font-medium text-foreground hover:underline">
-                        {comment.profiles.display_name || comment.profiles.username}
-                      </Link>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(comment.created_at).toLocaleDateString("de-DE", { day: "numeric", month: "short" })}
-                      </span>
-                      {comment.user_id === userId && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 opacity-0 group-hover/comment:opacity-100 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteComment(comment.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-xs text-foreground/80 mt-0.5">{comment.content}</p>
-                  </div>
-                </div>
-              ))
+              renderCommentTree(null, 0)
             )}
           </div>
           
@@ -462,7 +610,7 @@ function ProfilePostItem({
                 placeholder="Kommentar schreiben..."
                 className="bg-secondary/30 border-border/50 resize-none text-sm min-h-[60px]"
               />
-              <Button onClick={handlePostComment} disabled={isPostingComment || !newComment.trim()} className="self-end">
+              <Button onClick={() => handlePostComment()} disabled={isPostingComment || !newComment.trim()} className="self-end">
                 <Send className="h-4 w-4" />
               </Button>
             </div>
