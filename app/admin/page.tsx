@@ -75,8 +75,21 @@ export default async function AdminPage() {
     }
   }).channelPromotionRequest
 
-  const promotionRequests = promotionModel
-    ? await promotionModel.findMany({
+  let promotionRequests: Array<{
+    id: string
+    channelId: string
+    requesterId: string
+    packageKey: string
+    packageDays: number
+    cost: number
+    createdAt: Date
+    channel: { id: string; name: string }
+    requester: { id: string; username: string | null }
+  }> = []
+
+  if (promotionModel) {
+    try {
+      promotionRequests = await promotionModel.findMany({
         where: { status: "PENDING" },
         orderBy: { createdAt: "asc" },
         take: 100,
@@ -85,7 +98,10 @@ export default async function AdminPage() {
           requester: { select: { id: true, username: true } },
         },
       })
-    : []
+    } catch {
+      promotionRequests = []
+    }
+  }
 
   return (
     <DashboardShell>

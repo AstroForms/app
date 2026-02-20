@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { ensureBansTable } from "@/lib/bans"
 import { createAuditLog } from "@/lib/audit"
+import { ensureAdminModerationSchema, ensureReportActionsTable } from "@/lib/report-moderation"
 
 const DURATION_TO_HOURS: Record<string, number> = {
   "1h": 1,
@@ -46,22 +47,6 @@ async function requireAdmin() {
   }
 
   return { meId: userId, error: null }
-}
-
-async function ensureReportActionsTable() {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS \`report_actions\` (
-      \`id\` VARCHAR(191) PRIMARY KEY,
-      \`report_id\` VARCHAR(191) NOT NULL,
-      \`actor_id\` VARCHAR(191) NOT NULL,
-      \`action\` VARCHAR(64) NOT NULL,
-      \`notes\` TEXT NULL,
-      \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      KEY \`idx_report_actions_report\` (\`report_id\`),
-      KEY \`idx_report_actions_actor\` (\`actor_id\`),
-      KEY \`idx_report_actions_created\` (\`created_at\`)
-    )
-  `)
 }
 
 async function resolveTargetUserId(report: { targetType: string; targetId: string }) {
@@ -128,6 +113,7 @@ export async function POST(req: NextRequest) {
   try {
     const { meId, error } = await requireAdmin()
     if (error) return error
+    await ensureAdminModerationSchema()
 
     const body = await req.json().catch(() => ({}))
     const reportId = typeof body?.reportId === "string" ? body.reportId.trim() : ""
@@ -378,4 +364,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
 }
-
