@@ -38,6 +38,18 @@ const badgeIcons: Record<string, React.ComponentType<{ className?: string }>> = 
   Crown, Shield, ShieldCheck, BadgeCheck, Bot, Zap,
 }
 
+function getSafeHostname(rawUrl: string) {
+  try {
+    return new URL(rawUrl).hostname
+  } catch {
+    try {
+      return new URL(`https://${rawUrl}`).hostname
+    } catch {
+      return rawUrl
+    }
+  }
+}
+
 interface PostComment {
   id: string
   content: string
@@ -333,7 +345,7 @@ function ProfilePostItem({
               )}
               <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground/60">
                 <ExternalLink className="h-2.5 w-2.5" />
-                <span className="truncate">{new URL(post.link_url).hostname}</span>
+                <span className="truncate">{getSafeHostname(post.link_url)}</span>
               </div>
             </div>
           </a>
@@ -748,20 +760,22 @@ export function ProfileContent({
               <TooltipProvider>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {badges.map((ub) => {
-                    const Icon = badgeIcons[ub.badges.icon] || Star
+                    const badge = ub.badges
+                    if (!badge) return null
+                    const Icon = badgeIcons[badge.icon] || Star
                     return (
                       <Tooltip key={ub.id}>
                         <TooltipTrigger asChild>
                           <span
                             className="inline-flex items-center justify-center rounded-full p-1.5 border border-border/50 cursor-default"
-                            style={{ color: ub.badges.color, backgroundColor: `${ub.badges.color}15` }}
+                            style={{ color: badge.color, backgroundColor: `${badge.color}15` }}
                           >
                             <Icon className="h-4 w-4" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="font-medium">{ub.badges.name}</p>
-                          {ub.badges.description && <p className="text-xs text-muted-foreground">{ub.badges.description}</p>}
+                          <p className="font-medium">{badge.name}</p>
+                          {badge.description && <p className="text-xs text-muted-foreground">{badge.description}</p>}
                         </TooltipContent>
                       </Tooltip>
                     )
