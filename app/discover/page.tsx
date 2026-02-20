@@ -1,98 +1,72 @@
-import { createDbServer } from "@/lib/db-server"
+﻿import { createDbServer } from "@/lib/db-server"
 import { redirect } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { DiscoverContent } from "@/components/discover-content"
 
 export default async function DiscoverPage() {
-  try {
-    const supabase = await createDbServer()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect("/auth/login")
+  const supabase = await createDbServer()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect("/auth/login")
 
-    const [{ data: channels }, { data: memberships }] = await Promise.all([
-      supabase
-        .from("channels")
-        .select("*")
-        .eq("is_public", true)
-        .limit(50),
-      supabase
-        .from("channel_members")
-        .select("channel_id")
-        .eq("user_id", user.id),
-    ])
+  const [{ data: channels }, { data: memberships }] = await Promise.all([
+    supabase
+      .from("channels")
+      .select("*")
+      .eq("is_public", true)
+      .limit(50)
+      .then((res) => ({ data: res?.data || [] }))
+      .catch(() => ({ data: [] })),
+    supabase
+      .from("channel_members")
+      .select("channel_id")
+      .eq("user_id", user.id)
+      .then((res) => ({ data: res?.data || [] }))
+      .catch(() => ({ data: [] })),
+  ])
 
-    const now = Date.now()
+  const now = Date.now()
+  const channelsWithCounts = (channels || [])
+    .map((c: { id: string; boosted_until?: string | null; [key: string]: unknown }) => {
+      const boostedUntil = typeof c.boosted_until === "string" ? c.boosted_until : null
+      const boostedUntilMs = boostedUntil ? new Date(boostedUntil).getTime() : 0
+      const isBoosted = boostedUntilMs > now
 
-  // Add real member counts and prioritize:
-  // 1) verified channels
-  // 2) boosted (advertising) channels
-  // 3) all others
-    const channelsWithCounts = (channels || [])
-      .map((c: { id: string; boosted_until?: string | null; [key: string]: unknown }) => {
-        const boostedUntil = typeof c.boosted_until === "string" ? c.boosted_until : null
-        const boostedUntilMs = boostedUntil ? new Date(boostedUntil).getTime() : 0
-        const isBoosted = boostedUntilMs > now
+      return {
+        ...c,
+        member_count: typeof c.member_count === "number" ? c.member_count : 0,
+        is_boosted: isBoosted,
+      }
+    })
+    .sort(
+      (
+        a: { member_count: number; is_boosted?: boolean; boosted_until?: string | null; is_verified?: boolean },
+        b: { member_count: number; is_boosted?: boolean; boosted_until?: string | null; is_verified?: boolean },
+      ) => {
+        const aVerified = !!a.is_verified
+        const bVerified = !!b.is_verified
+        if (aVerified !== bVerified) return aVerified ? -1 : 1
 
-        return {
-          ...c,
-          member_count: typeof c.member_count === "number" ? c.member_count : 0,
-          is_boosted: isBoosted,
+        const aBoosted = !!a.is_boosted
+        const bBoosted = !!b.is_boosted
+        if (aBoosted !== bBoosted) return aBoosted ? -1 : 1
+
+        if (aBoosted && bBoosted) {
+          const aBoostTime = a.boosted_until ? new Date(a.boosted_until).getTime() : 0
+          const bBoostTime = b.boosted_until ? new Date(b.boosted_until).getTime() : 0
+          if (aBoostTime !== bBoostTime) return bBoostTime - aBoostTime
         }
-      })
-      .sort(
-        (
-          a: {
-            member_count: number
-            is_boosted?: boolean
-            boosted_until?: string | null
-            is_verified?: boolean
-          },
-          b: {
-            member_count: number
-            is_boosted?: boolean
-            boosted_until?: string | null
-            is_verified?: boolean
-          },
-        ) => {
-          const aVerified = !!a.is_verified
-          const bVerified = !!b.is_verified
-          if (aVerified !== bVerified) return aVerified ? -1 : 1
 
-          const aBoosted = !!a.is_boosted
-          const bBoosted = !!b.is_boosted
-          if (aBoosted !== bBoosted) return aBoosted ? -1 : 1
-
-          if (aBoosted && bBoosted) {
-            const aBoostTime = a.boosted_until ? new Date(a.boosted_until).getTime() : 0
-            const bBoostTime = b.boosted_until ? new Date(b.boosted_until).getTime() : 0
-            if (aBoostTime !== bBoostTime) return bBoostTime - aBoostTime
-          }
-
-          return b.member_count - a.member_count
-        },
-      )
-
-    const joinedIds = new Set<string>((memberships || []).map((m: { channel_id: string }) => m.channel_id))
-
-    return (
-      <DashboardShell>
-        <DiscoverContent channels={channelsWithCounts} joinedIds={joinedIds} userId={user.id} />
-      </DashboardShell>
+        return b.member_count - a.member_count
+      },
     )
-  } catch (error) {
-    const digest =
-      typeof error === "object" && error !== null && "digest" in error
-        ? String((error as { digest?: unknown }).digest || "")
-        : ""
-    if (digest.startsWith("NEXT_REDIRECT")) throw error
 
-    return (
-      <DashboardShell>
-        <div className="max-w-lg mx-auto glass rounded-2xl p-12 text-center">
-          <h1 className="text-xl font-bold text-foreground mb-2">Discover vorübergehend nicht verfügbar</h1>
-          <p className="text-muted-foreground">Bitte lade die Seite neu.</p>
-        </div>
-      </DashboardShell>
-    )
-  }
+  const joinedIds = new Set<string>((memberships || []).map((m: { channel_id: string }) => m.channel_id))
+
+  return (
+    <DashboardShell>
+      <DiscoverContent channels={channelsWithCounts} joinedIds={joinedIds} userId={user.id} />
+    </DashboardShell>
+  )
 }

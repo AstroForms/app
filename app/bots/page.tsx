@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation"
+﻿import { redirect } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { BotsContent } from "@/components/bots-content"
 import { FeatureDisabledNotice } from "@/components/feature-disabled-notice"
@@ -8,121 +8,114 @@ import { getFeatureFlags } from "@/lib/features"
 import { ensureBotInfrastructure } from "@/lib/bot-infrastructure"
 
 export default async function BotsPage() {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) redirect("/auth/login")
-    const userId = session.user.id
-    const featureFlags = await getFeatureFlags()
+  const session = await auth().catch(() => null)
+  if (!session?.user?.id) redirect("/auth/login")
+  const userId = session.user.id
+  const featureFlags = await getFeatureFlags().catch(() => ({ bots: true, messages: true, automations: true }))
 
-    if (!featureFlags.bots) {
-      return (
-        <DashboardShell>
-          <FeatureDisabledNotice
-            title="Bots sind deaktiviert"
-            description="Diese Funktion wurde von der Administration deaktiviert und kann aktuell nicht verwendet werden."
-          />
-        </DashboardShell>
-      )
-    }
+  if (!featureFlags.bots) {
+    return (
+      <DashboardShell>
+        <FeatureDisabledNotice
+          title="Bots sind deaktiviert"
+          description="Diese Funktion wurde von der Administration deaktiviert und kann aktuell nicht verwendet werden."
+        />
+      </DashboardShell>
+    )
+  }
 
-    await ensureBotInfrastructure()
+  await ensureBotInfrastructure().catch(() => undefined)
 
-    const bots = await prisma.bot.findMany({
+  const bots = await prisma.bot
+    .findMany({
       where: { ownerId: userId },
       orderBy: { createdAt: "desc" },
     })
+    .catch(() => [])
 
-    const botIds = bots.map((bot) => bot.id)
-    const [automations, channels, activeRules, pendingInvites] = await Promise.all([
-      botIds.length
-        ? prisma.botAutomation.findMany({
+  const botIds = bots.map((bot) => bot.id)
+  const [automations, channels, activeRules, pendingInvites] = await Promise.all([
+    botIds.length
+      ? prisma.botAutomation
+          .findMany({
             where: { botId: { in: botIds } },
             include: { bot: { select: { name: true } } },
             orderBy: { createdAt: "desc" },
           })
-        : Promise.resolve([]),
-      prisma.channel.findMany({
+          .catch(() => [])
+      : Promise.resolve([]),
+    prisma.channel
+      .findMany({
         where: { ownerId: userId },
         select: { id: true, name: true },
-      }),
-      botIds.length
-        ? prisma.botActiveRule.findMany({
+      })
+      .catch(() => []),
+    botIds.length
+      ? prisma.botActiveRule
+          .findMany({
             where: { botId: { in: botIds } },
           })
-        : Promise.resolve([]),
-      botIds.length
-        ? prisma.botChannelInvite.findMany({
+          .catch(() => [])
+      : Promise.resolve([]),
+    botIds.length
+      ? prisma.botChannelInvite
+          .findMany({
             where: { botId: { in: botIds }, status: "PENDING" },
             include: { channel: { select: { id: true, name: true } } },
             orderBy: { createdAt: "desc" },
           })
-        : Promise.resolve([]),
-    ])
+          .catch(() => [])
+      : Promise.resolve([]),
+  ])
 
-    return (
-      <DashboardShell>
-        <BotsContent
-          bots={bots.map((bot) => ({
-            id: bot.id,
-            name: bot.name,
-            description: bot.description,
-            avatar_url: bot.avatarUrl,
-            banner_url: bot.bannerUrl,
-            is_verified: bot.isVerified,
-            is_active: bot.isActive,
-            is_public: bot.isPublic,
-            created_at: bot.createdAt.toISOString(),
-          }))}
-          automations={automations.map((auto) => ({
-            id: auto.id,
-            name: auto.name,
-            description: auto.description,
-            trigger_type: auto.triggerType,
-            action_type: auto.actionType,
-            trigger_config: auto.triggerConfig as Record<string, unknown>,
-            action_config: auto.actionConfig as Record<string, unknown>,
-            is_active: auto.isActive,
-            bot_id: auto.botId,
-            bots: auto.bot ? { name: auto.bot.name } : null,
-            cooldown_seconds: auto.cooldownSeconds,
-            trigger_count: auto.triggerCount,
-            last_triggered_at: auto.lastTriggeredAt?.toISOString(),
-          }))}
-          channels={channels}
-          userId={userId}
-          activeRules={activeRules.map((rule) => ({
-            id: rule.id,
-            bot_id: rule.botId,
-            rule_name: rule.ruleName,
-            rule_description: rule.ruleDescription,
-            rule_category: rule.ruleCategory,
-            is_active: rule.isActive,
-          }))}
-          pendingInvites={pendingInvites.map((invite) => ({
-            id: invite.id,
-            bot_id: invite.botId,
-            channel_id: invite.channelId,
-            status: invite.status.toLowerCase(),
-            channels: invite.channel,
-          }))}
-          automationsEnabled={featureFlags.automations}
-        />
-      </DashboardShell>
-    )
-  } catch (error) {
-    const digest =
-      typeof error === "object" && error !== null && "digest" in error
-        ? String((error as { digest?: unknown }).digest || "")
-        : ""
-    if (digest.startsWith("NEXT_REDIRECT")) throw error
-
-    return (
-      <DashboardShell>
-        <div className="max-w-lg mx-auto glass rounded-2xl p-12 text-center">
-          <h1 className="text-xl font-bold text-foreground mb-2">Bots vorübergehend nicht verfügbar</h1>
-          <p className="text-muted-foreground">Bitte lade die Seite neu.</p>
-        </div>
-      </DashboardShell>
-    )
-  }
+  return (
+    <DashboardShell>
+      <BotsContent
+        bots={bots.map((bot) => ({
+          id: bot.id,
+          name: bot.name,
+          description: bot.description,
+          avatar_url: bot.avatarUrl,
+          banner_url: bot.bannerUrl,
+          is_verified: bot.isVerified,
+          is_active: bot.isActive,
+          is_public: bot.isPublic,
+          created_at: bot.createdAt.toISOString(),
+        }))}
+        automations={automations.map((auto) => ({
+          id: auto.id,
+          name: auto.name,
+          description: auto.description,
+          trigger_type: auto.triggerType,
+          action_type: auto.actionType,
+          trigger_config: auto.triggerConfig as Record<string, unknown>,
+          action_config: auto.actionConfig as Record<string, unknown>,
+          is_active: auto.isActive,
+          bot_id: auto.botId,
+          bots: auto.bot ? { name: auto.bot.name } : null,
+          cooldown_seconds: auto.cooldownSeconds,
+          trigger_count: auto.triggerCount,
+          last_triggered_at: auto.lastTriggeredAt?.toISOString(),
+        }))}
+        channels={channels}
+        userId={userId}
+        activeRules={activeRules.map((rule) => ({
+          id: rule.id,
+          bot_id: rule.botId,
+          rule_name: rule.ruleName,
+          rule_description: rule.ruleDescription,
+          rule_category: rule.ruleCategory,
+          is_active: rule.isActive,
+        }))}
+        pendingInvites={pendingInvites.map((invite) => ({
+          id: invite.id,
+          bot_id: invite.botId,
+          channel_id: invite.channelId,
+          status: invite.status.toLowerCase(),
+          channels: invite.channel,
+        }))}
+        automationsEnabled={featureFlags.automations}
+      />
+    </DashboardShell>
+  )
 }
