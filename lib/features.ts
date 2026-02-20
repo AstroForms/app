@@ -54,20 +54,24 @@ function normalizeEnabled(value: unknown): boolean {
 }
 
 export async function getFeatureFlags(): Promise<FeatureFlags> {
-  await ensureFeatureFlagsTable()
+  try {
+    await ensureFeatureFlagsTable()
 
-  const rows = await prisma.$queryRaw<Array<{ key: string; enabled: unknown }>>(
-    Prisma.sql`SELECT \`key\`, enabled FROM feature_flags`,
-  )
+    const rows = await prisma.$queryRaw<Array<{ key: string; enabled: unknown }>>(
+      Prisma.sql`SELECT \`key\`, enabled FROM feature_flags`,
+    )
 
-  const flags: FeatureFlags = { ...DEFAULT_FLAGS }
-  for (const row of rows) {
-    if ((FEATURE_KEYS as string[]).includes(row.key)) {
-      flags[row.key as FeatureKey] = normalizeEnabled(row.enabled)
+    const flags: FeatureFlags = { ...DEFAULT_FLAGS }
+    for (const row of rows) {
+      if ((FEATURE_KEYS as string[]).includes(row.key)) {
+        flags[row.key as FeatureKey] = normalizeEnabled(row.enabled)
+      }
     }
-  }
 
-  return flags
+    return flags
+  } catch {
+    return { ...DEFAULT_FLAGS }
+  }
 }
 
 export async function isFeatureEnabled(key: FeatureKey): Promise<boolean> {

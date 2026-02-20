@@ -488,7 +488,7 @@ class QueryBuilder {
 }
 
 export async function createDbServer() {
-  const session = await auth()
+  const session = await auth().catch(() => null)
   return {
     auth: {
       async getUser() {
