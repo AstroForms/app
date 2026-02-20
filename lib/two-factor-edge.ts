@@ -37,6 +37,9 @@ function timingSafeEqualString(a: string, b: string) {
 }
 
 async function signPayload(payload: string, secret: string) {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("WebCrypto not available")
+  }
   const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(
     "raw",
@@ -50,16 +53,20 @@ async function signPayload(payload: string, secret: string) {
 }
 
 export async function verifyTwoFactorProofValueEdge(value: string | undefined, userId: string) {
-  if (!value || !userId) return false
-  const [cookieUserId, tsRaw, sig] = value.split(".")
-  if (!cookieUserId || !tsRaw || !sig) return false
-  if (cookieUserId !== userId) return false
+  try {
+    if (!value || !userId) return false
+    const [cookieUserId, tsRaw, sig] = value.split(".")
+    if (!cookieUserId || !tsRaw || !sig) return false
+    if (cookieUserId !== userId) return false
 
-  const ts = Number(tsRaw)
-  if (!Number.isFinite(ts) || ts <= 0) return false
-  if (Date.now() - ts > DEFAULT_2FA_WINDOW_MS) return false
+    const ts = Number(tsRaw)
+    if (!Number.isFinite(ts) || ts <= 0) return false
+    if (Date.now() - ts > DEFAULT_2FA_WINDOW_MS) return false
 
-  const payload = `${cookieUserId}.${ts}`
-  const expectedSig = await signPayload(payload, getTwoFactorSigningSecret())
-  return timingSafeEqualString(expectedSig, sig)
+    const payload = `${cookieUserId}.${ts}`
+    const expectedSig = await signPayload(payload, getTwoFactorSigningSecret())
+    return timingSafeEqualString(expectedSig, sig)
+  } catch {
+    return false
+  }
 }

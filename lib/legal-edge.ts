@@ -39,6 +39,9 @@ function timingSafeEqualString(a: string, b: string) {
 }
 
 async function signPayload(payload: string, secret: string) {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("WebCrypto not available")
+  }
   const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(
     "raw",
@@ -52,16 +55,20 @@ async function signPayload(payload: string, secret: string) {
 }
 
 export async function verifyLegalAcceptanceProofValueEdge(value: string | undefined, userId: string) {
-  if (!value || !userId) return false
-  const [cookieUserId, cookieVersion, tsRaw, sig] = value.split(".")
-  if (!cookieUserId || !cookieVersion || !tsRaw || !sig) return false
-  if (cookieUserId !== userId || cookieVersion !== CURRENT_TERMS_VERSION) return false
+  try {
+    if (!value || !userId) return false
+    const [cookieUserId, cookieVersion, tsRaw, sig] = value.split(".")
+    if (!cookieUserId || !cookieVersion || !tsRaw || !sig) return false
+    if (cookieUserId !== userId || cookieVersion !== CURRENT_TERMS_VERSION) return false
 
-  const ts = Number(tsRaw)
-  if (!Number.isFinite(ts) || ts <= 0) return false
-  if (Date.now() - ts > DEFAULT_LEGAL_COOKIE_WINDOW_MS) return false
+    const ts = Number(tsRaw)
+    if (!Number.isFinite(ts) || ts <= 0) return false
+    if (Date.now() - ts > DEFAULT_LEGAL_COOKIE_WINDOW_MS) return false
 
-  const payload = `${cookieUserId}.${cookieVersion}.${ts}`
-  const expectedSig = await signPayload(payload, getLegalSigningSecret())
-  return timingSafeEqualString(expectedSig, sig)
+    const payload = `${cookieUserId}.${cookieVersion}.${ts}`
+    const expectedSig = await signPayload(payload, getLegalSigningSecret())
+    return timingSafeEqualString(expectedSig, sig)
+  } catch {
+    return false
+  }
 }
