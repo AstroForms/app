@@ -1,128 +1,113 @@
-import { createDbServer } from "@/lib/db-server"
+﻿import { createDbServer } from "@/lib/db-server"
 import { redirect } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { AdminContent } from "@/components/admin-content"
-import { prisma } from "@/lib/db"
 import { listRecentBans } from "@/lib/bans"
 
 export default async function AdminPage() {
-  const supabase = await createDbServer()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/auth/login")
+  try {
+    const supabase = await createDbServer()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) redirect("/auth/login")
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single()
 
-  const hasAdminAccess = profile?.role === "admin" || profile?.role === "owner"
+    const hasAdminAccess = profile?.role === "admin" || profile?.role === "owner"
 
-  if (!hasAdminAccess) {
+    if (!hasAdminAccess) {
+      return (
+        <DashboardShell>
+          <div className="max-w-lg mx-auto glass rounded-2xl p-12 text-center">
+            <h1 className="text-xl font-bold text-foreground mb-2">Kein Zugriff</h1>
+            <p className="text-muted-foreground">Du benötigst Admin-Rechte für diesen Bereich.</p>
+          </div>
+        </DashboardShell>
+      )
+    }
+
+    const reports = await (async () => {
+      try {
+        const { data } = await supabase
+          .from("reports")
+          .select("*, profiles!reports_reporter_id_fkey(username)")
+          .order("created_at", { ascending: false })
+          .limit(50)
+        return data || []
+      } catch {
+        return []
+      }
+    })()
+
+    const unverifiedChannels = await (async () => {
+      try {
+        const { data } = await supabase
+          .from("channels")
+          .select("*, profiles!channels_owner_id_fkey(username)")
+          .eq("is_verified", false)
+          .order("created_at", { ascending: false })
+        return data || []
+      } catch {
+        return []
+      }
+    })()
+
+    const unverifiedBots = await (async () => {
+      try {
+        const { data } = await supabase
+          .from("bots")
+          .select("*, profiles!bots_owner_id_fkey(username)")
+          .eq("is_verified", false)
+          .order("created_at", { ascending: false })
+        return data || []
+      } catch {
+        return []
+      }
+    })()
+
+    const bans = await listRecentBans(50).catch(() => [])
+    const promotionRequests: Array<{
+      id: string
+      channel_id: string
+      channel_name: string
+      requester_id: string
+      requester_username: string
+      package_key: string
+      package_days: number
+      cost: number
+      created_at: string
+    }> = []
+
+    return (
+      <DashboardShell>
+        <AdminContent
+          reports={reports}
+          unverifiedChannels={unverifiedChannels}
+          unverifiedBots={unverifiedBots}
+          bans={bans}
+          promotionRequests={promotionRequests}
+          userId={user.id}
+        />
+      </DashboardShell>
+    )
+  } catch (error) {
+    const digest =
+      typeof error === "object" && error !== null && "digest" in error
+        ? String((error as { digest?: unknown }).digest || "")
+        : ""
+
+    if (digest.startsWith("NEXT_REDIRECT")) throw error
+
     return (
       <DashboardShell>
         <div className="max-w-lg mx-auto glass rounded-2xl p-12 text-center">
-          <h1 className="text-xl font-bold text-foreground mb-2">Kein Zugriff</h1>
-          <p className="text-muted-foreground">Du benötigst Admin-Rechte für diesen Bereich.</p>
+          <h1 className="text-xl font-bold text-foreground mb-2">Admin vorübergehend nicht verfügbar</h1>
+          <p className="text-muted-foreground">Bitte lade die Seite neu. Falls es bleibt, führe die SQL-Migrationen aus.</p>
         </div>
       </DashboardShell>
     )
   }
-
-  const { data: reports } = await supabase
-    .from("reports")
-    .select("*, profiles!reports_reporter_id_fkey(username)")
-    .order("created_at", { ascending: false })
-    .limit(50)
-
-  const { data: unverifiedChannels } = await supabase
-    .from("channels")
-    .select("*, profiles!channels_owner_id_fkey(username)")
-    .eq("is_verified", false)
-    .order("created_at", { ascending: false })
-
-  const { data: unverifiedBots } = await supabase
-    .from("bots")
-    .select("*, profiles!bots_owner_id_fkey(username)")
-    .eq("is_verified", false)
-    .order("created_at", { ascending: false })
-
-  const bans = await listRecentBans(50)
-
-  const promotionModel = (prisma as unknown as {
-    channelPromotionRequest?: {
-      findMany: (args: {
-        where: { status: "PENDING" }
-        orderBy: { createdAt: "asc" }
-        take: number
-        include: {
-          channel: { select: { id: true; name: true } }
-          requester: { select: { id: true; username: true } }
-        }
-      }) => Promise<
-        Array<{
-          id: string
-          channelId: string
-          requesterId: string
-          packageKey: string
-          packageDays: number
-          cost: number
-          createdAt: Date
-          channel: { id: string; name: string }
-          requester: { id: string; username: string | null }
-        }>
-      >
-    }
-  }).channelPromotionRequest
-
-  let promotionRequests: Array<{
-    id: string
-    channelId: string
-    requesterId: string
-    packageKey: string
-    packageDays: number
-    cost: number
-    createdAt: Date
-    channel: { id: string; name: string }
-    requester: { id: string; username: string | null }
-  }> = []
-
-  if (promotionModel) {
-    try {
-      promotionRequests = await promotionModel.findMany({
-        where: { status: "PENDING" },
-        orderBy: { createdAt: "asc" },
-        take: 100,
-        include: {
-          channel: { select: { id: true, name: true } },
-          requester: { select: { id: true, username: true } },
-        },
-      })
-    } catch {
-      promotionRequests = []
-    }
-  }
-
-  return (
-    <DashboardShell>
-      <AdminContent
-        reports={reports || []}
-        unverifiedChannels={unverifiedChannels || []}
-        unverifiedBots={unverifiedBots || []}
-        bans={bans}
-        promotionRequests={promotionRequests.map((request) => ({
-          id: request.id,
-          channel_id: request.channelId,
-          channel_name: request.channel.name,
-          requester_id: request.requesterId,
-          requester_username: request.requester.username || "unknown",
-          package_key: request.packageKey,
-          package_days: request.packageDays,
-          cost: request.cost,
-          created_at: request.createdAt.toISOString(),
-        }))}
-        userId={user.id}
-      />
-    </DashboardShell>
-  )
 }

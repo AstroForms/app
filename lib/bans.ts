@@ -132,6 +132,8 @@ export async function listRecentBans(limit = 50) {
     const isRecoverable =
       message.includes("access denied") ||
       message.includes("permission denied") ||
+      message.includes("denied to user") ||
+      message.includes("command denied") ||
       message.includes("doesn't exist") ||
       message.includes("does not exist") ||
       message.includes("no such table") ||
