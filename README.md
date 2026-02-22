@@ -89,6 +89,7 @@ NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="replace-with-random-secret"
 AUTH_TRUST_HOST="true"
 APP_URL="http://localhost:3000"
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 
 # OAuth Provider (optional)
 GITHUB_CLIENT_ID=""

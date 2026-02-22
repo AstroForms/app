@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next"
+import { getPublicSiteUrl } from "@/lib/site-url"
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://astroforms.de"
+const siteUrl = getPublicSiteUrl()
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()

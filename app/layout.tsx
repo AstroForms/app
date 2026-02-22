@@ -4,6 +4,7 @@ import { Space_Grotesk, Fira_Code } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/components/auth-provider"
 import { ConsentBanner } from "@/components/consent-banner"
+import { getPublicSiteUrl } from "@/lib/site-url"
 
 import "./globals.css"
 
@@ -19,7 +20,7 @@ const firaCode = Fira_Code({
   display: "swap",
 })
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://astroforms.de"
+const siteUrl = getPublicSiteUrl()
 const siteName = "AstroForms"
 const defaultTitle = "AstroForms - Community, Channels und Bots"
 const defaultDescription =
