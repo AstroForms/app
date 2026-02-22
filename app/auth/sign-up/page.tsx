@@ -74,7 +74,7 @@ export default function SignUpPage() {
     setError(null)
 
     if (password !== repeatPassword) {
-      setError("PasswÃ¶rter stimmen nicht Ã¼berein")
+      setError("Passwörter stimmen nicht überein")
       setIsLoading(false)
       return
     }
@@ -92,7 +92,7 @@ export default function SignUpPage() {
 
   const handleOAuth = async (provider: "google" | "discord" | "github") => {
     if (!availableProviders.has(provider)) {
-      setError("Dieser Login-Provider ist derzeit nicht verfuegbar.")
+      setError("Dieser Login-Provider ist derzeit nicht verfügbar.")
       return
     }
     await signIn(provider, { callbackUrl: "/" })
@@ -226,3 +226,4 @@ export default function SignUpPage() {
     </div>
   )
 }
+

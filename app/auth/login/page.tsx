@@ -56,19 +56,19 @@ export default function LoginPage() {
       case "AccountBanned":
         return "Dein Account ist aktuell gesperrt. Bitte kontaktiere den Support."
       case "EmailNotVerified":
-        return "Bitte bestaetige zuerst deine E-Mail-Adresse. Pruefe dein Postfach."
+        return "Bitte bestätige zuerst deine E-Mail-Adresse. Prüfe dein Postfach."
       case "CredentialsSignin":
-        return "Login fehlgeschlagen. PrÃ¼fe Benutzername/E-Mail und Passwort."
+        return "Login fehlgeschlagen. Prüfe Benutzername/E-Mail und Passwort."
       case "AccessDenied":
-        return "Zugriff verweigert. Dein Account ist eventuell eingeschrÃ¤nkt."
+        return "Zugriff verweigert. Dein Account ist eventuell eingeschränkt."
       case "Configuration":
-        return "Login ist gerade nicht verfÃ¼gbar (Configuration). Bitte spÃ¤ter erneut versuchen."
+        return "Login ist gerade nicht verfügbar (Configuration). Bitte später erneut versuchen."
       case "OAuthAccountNotLinked":
-        return "Dieser OAuth-Login ist nicht mit deinem Account verknÃ¼pft."
+        return "Dieser OAuth-Login ist nicht mit deinem Account verknüpft."
       case "VerificationExpired":
-        return "Der Bestaetigungslink ist abgelaufen. Lass dir bitte einen neuen Link senden."
+        return "Der Bestätigungslink ist abgelaufen. Lass dir bitte einen neuen Link senden."
       case "Verification":
-        return "Der Bestaetigungslink ist ungueltig oder wurde bereits verwendet."
+        return "Der Bestätigungslink ist ungültig oder wurde bereits verwendet."
       default:
         return "Anmeldung fehlgeschlagen. Bitte erneut versuchen."
     }
@@ -82,7 +82,7 @@ export default function LoginPage() {
       setError(mapAuthError(incomingError))
     }
     if (search.get("verified") === "1") {
-      setNotice("E-Mail erfolgreich bestaetigt. Du kannst dich jetzt anmelden.")
+      setNotice("E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.")
     }
   }, [])
 
@@ -134,7 +134,7 @@ export default function LoginPage() {
 
   const handleOAuth = async (provider: "google" | "discord" | "github" | "microsoft-entra-id") => {
     if (!availableProviders.has(provider)) {
-      setError("Dieser Login-Provider ist derzeit nicht verfuegbar.")
+      setError("Dieser Login-Provider ist derzeit nicht verfügbar.")
       return
     }
     await signIn(provider, { callbackUrl: "/" })
@@ -251,6 +251,11 @@ export default function LoginPage() {
               {isLoading ? "Anmelden..." : "Anmelden"}
             </Button>
           </form>
+          <p className="mt-3 text-right text-sm">
+            <Link href="/auth/forgot-password" className="text-primary hover:underline">
+              Passwort vergessen?
+            </Link>
+          </p>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Noch kein Account?{" "}

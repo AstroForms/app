@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { ensureBansTable, setUserBanCache } from "@/lib/bans"
 import { createAuditLog } from "@/lib/audit"
 import { ensureAdminModerationSchema, ensureReportActionsTable } from "@/lib/report-moderation"
+import { sendAccountBannedMail } from "@/lib/mail"
 
 const DURATION_TO_HOURS: Record<string, number> = {
   "1h": 1,
@@ -333,6 +334,20 @@ export async function POST(req: NextRequest) {
       `
       setUserBanCache(targetUserId, true)
       await prisma.session.deleteMany({ where: { userId: targetUserId } })
+      const targetUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: { email: true, name: true },
+      })
+      if (targetUser?.email) {
+        await sendAccountBannedMail({
+          email: targetUser.email,
+          name: targetUser.name,
+          reason: notes || "Sperrung durch Moderation",
+          bannedUntil,
+        }).catch((mailError) => {
+          console.error("[mail] moderation ban notice failed", mailError)
+        })
+      }
       await prisma.report.update({
         where: { id: reportId },
         data: {

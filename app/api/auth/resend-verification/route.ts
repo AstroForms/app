@@ -7,7 +7,7 @@ import { sendEmailVerificationMail } from "@/lib/mail"
 
 const GENERIC_RESPONSE = {
   ok: true,
-  message: "Wenn ein unbestaetigter Account existiert, wurde eine Mail versendet.",
+  message: "Wenn ein unbestätigter Account existiert, wurde eine Mail versendet.",
 }
 
 export async function POST(req: NextRequest) {
@@ -44,3 +44,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(GENERIC_RESPONSE, { status: 200 })
   }
 }
+

@@ -1,21 +1,21 @@
-import Link from "next/link"
+﻿import Link from "next/link"
 import { AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 function mapErrorMessage(error?: string) {
   switch (error) {
     case "AccessDenied":
-      return "Zugriff verweigert. Dein Account ist moeglicherweise gesperrt oder hat keine Berechtigung."
+      return "Zugriff verweigert. Dein Account ist möglicherweise gesperrt oder hat keine Berechtigung."
     case "Configuration":
-      return "Die Login-Konfiguration ist aktuell fehlerhaft. Bitte spaeter erneut versuchen."
+      return "Die Login-Konfiguration ist aktuell fehlerhaft. Bitte später erneut versuchen."
     case "OAuthAccountNotLinked":
-      return "Dieser Login-Provider ist nicht mit deinem Account verknuepft."
+      return "Dieser Login-Provider ist nicht mit deinem Account verknüpft."
     case "EmailNotVerified":
-      return "Bitte bestaetige zuerst deine E-Mail-Adresse."
+      return "Bitte bestätige zuerst deine E-Mail-Adresse."
     case "VerificationExpired":
       return "Der Verifizierungslink ist abgelaufen. Bitte fordere einen neuen Link an."
     case "Verification":
-      return "Die Verifizierung ist fehlgeschlagen oder ungueltig."
+      return "Die Verifizierung ist fehlgeschlagen oder ungültig."
     default:
       return "Es gab ein Problem bei der Authentifizierung. Bitte versuche es erneut."
   }
@@ -40,7 +40,7 @@ export default async function AuthErrorPage({
         <p className="text-muted-foreground mb-6">{message}</p>
         {errorCode ? <p className="text-xs text-muted-foreground mb-4">Code: {errorCode}</p> : null}
         <Button asChild>
-          <Link href="/auth/login">Zurueck zum Login</Link>
+          <Link href="/auth/login">Zurück zum Login</Link>
         </Button>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { createAuditLog } from "@/lib/audit"
 import { ensureBansTable, setUserBanCache } from "@/lib/bans"
+import { sendAccountBannedMail } from "@/lib/mail"
 
 const DURATION_TO_HOURS: Record<string, number> = {
   "1h": 1,
@@ -104,6 +105,21 @@ export async function POST(req: NextRequest) {
       targetUserId: profileId,
       details: `duration=${duration}${target.username ? `; target=@${target.username}` : ""}${reason ? `; reason=${reason}` : ""}`,
     })
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: profileId },
+      select: { email: true, name: true },
+    })
+    if (targetUser?.email) {
+      await sendAccountBannedMail({
+        email: targetUser.email,
+        name: targetUser.name,
+        reason,
+        bannedUntil,
+      }).catch((mailError) => {
+        console.error("[mail] ban notice failed", mailError)
+      })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

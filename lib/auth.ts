@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
 import { isUserCurrentlyBanned } from "@/lib/bans"
 import { CURRENT_TERMS_VERSION } from "@/lib/legal-constants"
+import { sendLoginActivityMail } from "@/lib/mail"
 
 const isProd = process.env.NODE_ENV === "production"
 const sessionCookieName = isProd ? "__Secure-authjs.session-token" : "authjs.session-token"
@@ -416,6 +417,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
   events: {
+    async signIn({ user }) {
+      try {
+        if (!user?.email) return
+        await sendLoginActivityMail({
+          email: user.email,
+          name: user.name,
+        })
+      } catch (error) {
+        console.error("[auth] signIn mail event failed:", error)
+      }
+    },
     async createUser({ user }) {
       try {
         if (!user?.id) return
