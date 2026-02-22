@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { signOut } from "next-auth/react"
@@ -14,9 +14,18 @@ type TwoFactorChallengeContentProps = {
 
 export function TwoFactorChallengeContent({ callbackUrl }: TwoFactorChallengeContentProps) {
   const router = useRouter()
+  const [callbackTarget, setCallbackTarget] = useState(callbackUrl || "/")
   const [code, setCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const fromQuery = new URLSearchParams(window.location.search).get("callbackUrl")
+    if (fromQuery && fromQuery.startsWith("/")) {
+      setCallbackTarget(fromQuery)
+    }
+  }, [])
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -32,7 +41,7 @@ export function TwoFactorChallengeContent({ callbackUrl }: TwoFactorChallengeCon
       if (!response.ok) {
         throw new Error(data.error || "2FA-Code ungültig.")
       }
-      router.push(callbackUrl)
+      router.push(callbackTarget)
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "2FA-Code ungültig.")
