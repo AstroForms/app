@@ -10,7 +10,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Rocket, Github } from "lucide-react"
-import { signIn } from "next-auth/react"
+import { getProviders, signIn } from "next-auth/react"
 
 // Helper for API call
 async function registerUser({ email, password, name }: { email: string; password: string; name?: string }) {
@@ -47,8 +47,26 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("")
   const [repeatPassword, setRepeatPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [availableProviders, setAvailableProviders] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+
+  React.useEffect(() => {
+    let active = true
+    getProviders()
+      .then((providers) => {
+        if (!active) return
+        setAvailableProviders(new Set(Object.keys(providers || {})))
+      })
+      .catch(() => {
+        if (!active) return
+        setAvailableProviders(new Set())
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,6 +91,10 @@ export default function SignUpPage() {
   }
 
   const handleOAuth = async (provider: "google" | "discord" | "github") => {
+    if (!availableProviders.has(provider)) {
+      setError("Dieser Login-Provider ist derzeit nicht verfuegbar.")
+      return
+    }
     await signIn(provider, { callbackUrl: "/" })
   }
 
@@ -89,30 +111,36 @@ export default function SignUpPage() {
 
         <div className="glass rounded-2xl p-8">
           <div className="flex flex-col gap-3 mb-6">
-            <Button
-              variant="outline"
-              className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
-              onClick={() => handleOAuth("google")}
-            >
-              <GoogleIcon className="h-5 w-5" />
-              Mit Google registrieren
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
-              onClick={() => handleOAuth("discord")}
-            >
-              <DiscordIcon className="h-5 w-5" />
-              Mit Discord registrieren
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
-              onClick={() => handleOAuth("github")}
-            >
-              <Github className="h-5 w-5" />
-              Mit GitHub registrieren
-            </Button>
+            {availableProviders.has("google") ? (
+              <Button
+                variant="outline"
+                className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
+                onClick={() => handleOAuth("google")}
+              >
+                <GoogleIcon className="h-5 w-5" />
+                Mit Google registrieren
+              </Button>
+            ) : null}
+            {availableProviders.has("discord") ? (
+              <Button
+                variant="outline"
+                className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
+                onClick={() => handleOAuth("discord")}
+              >
+                <DiscordIcon className="h-5 w-5" />
+                Mit Discord registrieren
+              </Button>
+            ) : null}
+            {availableProviders.has("github") ? (
+              <Button
+                variant="outline"
+                className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
+                onClick={() => handleOAuth("github")}
+              >
+                <Github className="h-5 w-5" />
+                Mit GitHub registrieren
+              </Button>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-4 mb-6">

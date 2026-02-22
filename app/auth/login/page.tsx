@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { signIn } from "next-auth/react"
+import { getProviders, signIn } from "next-auth/react"
 import { signIn as passkeySignIn } from "next-auth/webauthn"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,6 +46,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [availableProviders, setAvailableProviders] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
@@ -85,6 +86,23 @@ export default function LoginPage() {
     }
   }, [])
 
+  useEffect(() => {
+    let active = true
+    getProviders()
+      .then((providers) => {
+        if (!active) return
+        setAvailableProviders(new Set(Object.keys(providers || {})))
+      })
+      .catch(() => {
+        if (!active) return
+        setAvailableProviders(new Set())
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -115,6 +133,10 @@ export default function LoginPage() {
   }
 
   const handleOAuth = async (provider: "google" | "discord" | "github" | "microsoft-entra-id") => {
+    if (!availableProviders.has(provider)) {
+      setError("Dieser Login-Provider ist derzeit nicht verfuegbar.")
+      return
+    }
     await signIn(provider, { callbackUrl: "/" })
   }
 
@@ -147,38 +169,46 @@ export default function LoginPage() {
               <KeyRound className="h-5 w-5" />
               Mit Passkey anmelden
             </Button>
-            <Button
-              variant="outline"
-              className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
-              onClick={() => handleOAuth("google")}
-            >
-              <GoogleIcon className="h-5 w-5" />
-              Mit Google anmelden
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
-              onClick={() => handleOAuth("discord")}
-            >
-              <DiscordIcon className="h-5 w-5" />
-              Mit Discord anmelden
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
-              onClick={() => handleOAuth("microsoft-entra-id")}
-            >
-              <MicrosoftIcon className="h-5 w-5" />
-              Mit Microsoft anmelden
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
-              onClick={() => handleOAuth("github")}
-            >
-              <Github className="h-5 w-5" />
-              Mit GitHub anmelden
-            </Button>
+            {availableProviders.has("google") ? (
+              <Button
+                variant="outline"
+                className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
+                onClick={() => handleOAuth("google")}
+              >
+                <GoogleIcon className="h-5 w-5" />
+                Mit Google anmelden
+              </Button>
+            ) : null}
+            {availableProviders.has("discord") ? (
+              <Button
+                variant="outline"
+                className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
+                onClick={() => handleOAuth("discord")}
+              >
+                <DiscordIcon className="h-5 w-5" />
+                Mit Discord anmelden
+              </Button>
+            ) : null}
+            {availableProviders.has("microsoft-entra-id") ? (
+              <Button
+                variant="outline"
+                className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
+                onClick={() => handleOAuth("microsoft-entra-id")}
+              >
+                <MicrosoftIcon className="h-5 w-5" />
+                Mit Microsoft anmelden
+              </Button>
+            ) : null}
+            {availableProviders.has("github") ? (
+              <Button
+                variant="outline"
+                className="w-full gap-2 h-11 bg-secondary/50 border-border/50 hover:bg-secondary text-foreground"
+                onClick={() => handleOAuth("github")}
+              >
+                <Github className="h-5 w-5" />
+                Mit GitHub anmelden
+              </Button>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-4 mb-6">
