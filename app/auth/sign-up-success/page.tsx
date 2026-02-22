@@ -3,13 +3,17 @@
 import Link from "next/link"
 import { CheckCircle2, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useSearchParams } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 
 export default function SignUpSuccessPage() {
-  const searchParams = useSearchParams()
-  const email = useMemo(() => searchParams.get("email") || "", [searchParams])
+  const [email, setEmail] = useState("")
   const [resendState, setResendState] = useState<"idle" | "loading" | "done">("idle")
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const value = new URLSearchParams(window.location.search).get("email") || ""
+    setEmail(value)
+  }, [])
 
   const resendVerificationMail = async () => {
     if (!email || resendState === "loading") return
