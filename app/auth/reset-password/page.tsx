@@ -1,4 +1,4 @@
-"use client"
+ï»¿"use client"
 
 import { FormEvent, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -30,13 +30,13 @@ export default function ResetPasswordPage() {
     setMessage(null)
 
     if (!token) {
-      setError("Der Zurücksetzungslink ist ungültig.")
+      setError("Der ZurÃ¼cksetzungslink ist ungÃ¼ltig.")
       setIsLoading(false)
       return
     }
 
     if (newPassword !== repeatPassword) {
-      setError("Die Passwörter stimmen nicht überein.")
+      setError("Die PasswÃ¶rter stimmen nicht Ã¼berein.")
       setIsLoading(false)
       return
     }
@@ -50,13 +50,13 @@ export default function ResetPasswordPage() {
 
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(typeof data?.error === "string" ? data.error : "Passwort konnte nicht zurückgesetzt werden.")
+        throw new Error(typeof data?.error === "string" ? data.error : "Passwort konnte nicht zurÃ¼ckgesetzt werden.")
       }
 
-      setMessage("Passwort erfolgreich geändert. Du wirst jetzt zum Login weitergeleitet.")
+      setMessage("Passwort erfolgreich geÃ¤ndert. Du wirst jetzt zum Login weitergeleitet.")
       setTimeout(() => router.push("/auth/login"), 1200)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Passwort konnte nicht zurückgesetzt werden.")
+      setError(err instanceof Error ? err.message : "Passwort konnte nicht zurÃ¼ckgesetzt werden.")
     } finally {
       setIsLoading(false)
     }
@@ -68,7 +68,7 @@ export default function ResetPasswordPage() {
         <div className="mb-6 text-center">
           <Lock className="mx-auto mb-3 h-9 w-9 text-primary" />
           <h1 className="text-xl font-semibold text-foreground">Neues Passwort setzen</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Wähle ein sicheres Passwort mit mindestens 10 Zeichen.</p>
+          <p className="mt-2 text-sm text-muted-foreground">WÃ¤hle ein sicheres Passwort mit mindestens 10 Zeichen.</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
@@ -97,12 +97,12 @@ export default function ResetPasswordPage() {
           {message ? <p className="rounded-lg bg-secondary/60 p-3 text-sm text-foreground">{message}</p> : null}
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Speichere..." : "Passwort ändern"}
+            {isLoading ? "Speichere..." : "Passwort Ã¤ndern"}
           </Button>
         </form>
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
-          Zurück zum <Link href="/auth/login" className="text-primary hover:underline">Login</Link>
+          ZurÃ¼ck zum <Link href="/auth/login" className="text-primary hover:underline">Login</Link>
         </p>
       </div>
     </div>

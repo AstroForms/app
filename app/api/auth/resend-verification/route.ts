@@ -1,4 +1,4 @@
-export const runtime = "nodejs"
+﻿export const runtime = "nodejs"
 
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
@@ -7,7 +7,7 @@ import { sendEmailVerificationMail } from "@/lib/mail"
 
 const GENERIC_RESPONSE = {
   ok: true,
-  message: "Wenn ein unbest�tigter Account existiert, wurde eine Mail versendet.",
+  message: "Wenn ein unbestätigter Account existiert, wurde eine Mail versendet.",
 }
 
 export async function POST(req: NextRequest) {
@@ -44,4 +44,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(GENERIC_RESPONSE, { status: 200 })
   }
 }
-

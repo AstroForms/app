@@ -1,4 +1,4 @@
-export const runtime = "nodejs"
+﻿export const runtime = "nodejs"
 
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     const consumed = await consumePasswordResetToken(token)
     if (!consumed.ok) {
-      const message = consumed.reason === "expired" ? "Der Link ist abgelaufen." : "Ung�ltiger Link."
+      const message = consumed.reason === "expired" ? "Der Link ist abgelaufen." : "Ungültiger Link."
       return NextResponse.json({ error: message }, { status: 400 })
     }
 

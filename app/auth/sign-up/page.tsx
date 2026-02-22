@@ -1,4 +1,4 @@
-"use client"
+ï»¿"use client"
 
 import React from "react"
 
@@ -12,7 +12,6 @@ import { useState } from "react"
 import { Rocket, Github } from "lucide-react"
 import { getProviders, signIn } from "next-auth/react"
 
-// Helper for API call
 async function registerUser({ email, password, name }: { email: string; password: string; name?: string }) {
   const res = await fetch("/api/auth/register", {
     method: "POST",
@@ -74,7 +73,7 @@ export default function SignUpPage() {
     setError(null)
 
     if (password !== repeatPassword) {
-      setError("Passwörter stimmen nicht überein")
+      setError("PasswÃ¶rter stimmen nicht Ã¼berein")
       setIsLoading(false)
       return
     }
@@ -92,7 +91,7 @@ export default function SignUpPage() {
 
   const handleOAuth = async (provider: "google" | "discord" | "github") => {
     if (!availableProviders.has(provider)) {
-      setError("Dieser Login-Provider ist derzeit nicht verfügbar.")
+      setError("Dieser Login-Provider ist derzeit nicht verfÃ¼gbar.")
       return
     }
     await signIn(provider, { callbackUrl: "/" })
@@ -226,4 +225,3 @@ export default function SignUpPage() {
     </div>
   )
 }
-

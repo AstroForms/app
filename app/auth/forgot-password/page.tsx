@@ -1,4 +1,4 @@
-"use client"
+ï»¿"use client"
 
 import { FormEvent, useState } from "react"
 import Link from "next/link"
@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
         <div className="mb-6 text-center">
           <Mail className="mx-auto mb-3 h-9 w-9 text-primary" />
           <h1 className="text-xl font-semibold text-foreground">Passwort vergessen</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Wir senden dir einen sicheren Link zum Zurücksetzen.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Wir senden dir einen sicheren Link zum ZurÃ¼cksetzen.</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
         </form>
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
-          Zurück zum <Link href="/auth/login" className="text-primary hover:underline">Login</Link>
+          ZurÃ¼ck zum <Link href="/auth/login" className="text-primary hover:underline">Login</Link>
         </p>
       </div>
     </div>

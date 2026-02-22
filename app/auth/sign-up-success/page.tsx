@@ -1,4 +1,4 @@
-"use client"
+ï»¿"use client"
 
 import Link from "next/link"
 import { CheckCircle2, ShieldCheck } from "lucide-react"
@@ -35,7 +35,7 @@ export default function SignUpSuccessPage() {
         </div>
         <h1 className="text-xl font-semibold text-foreground mb-2">Fast geschafft</h1>
         <p className="text-muted-foreground mb-3">
-          Dein Account wurde erstellt. Bitte bestätige jetzt deine E-Mail-Adresse.
+          Dein Account wurde erstellt. Bitte bestÃ¤tige jetzt deine E-Mail-Adresse.
         </p>
         {email ? <p className="text-sm font-medium text-foreground mb-5">Mail gesendet an: {email}</p> : null}
 
@@ -43,17 +43,17 @@ export default function SignUpSuccessPage() {
           <p className="text-sm font-semibold mb-2 inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Sicherheitsinfos</p>
           <ul className="text-xs text-muted-foreground space-y-1">
             <li>Wir fragen dich niemals nach deinem Passwort per E-Mail.</li>
-            <li>Der Bestätigungslink ist 24 Stunden gültig.</li>
-            <li>Wenn du keine Mail siehst, prüfe Spam/Junk und sende neu.</li>
+            <li>Der BestÃ¤tigungslink ist 24 Stunden gÃ¼ltig.</li>
+            <li>Wenn du keine Mail siehst, prÃ¼fe Spam/Junk und sende neu.</li>
           </ul>
         </div>
 
         <div className="grid gap-3">
           <Button onClick={resendVerificationMail} disabled={!email || resendState === "loading"}>
-            {resendState === "loading" ? "Sende erneut..." : "Bestätigungs-Mail erneut senden"}
+            {resendState === "loading" ? "Sende erneut..." : "BestÃ¤tigungs-Mail erneut senden"}
           </Button>
           {resendState === "done" ? (
-            <p className="text-xs text-green-700 bg-green-100 rounded-md p-2">Wenn der Account noch unbestätigt ist, wurde eine neue Mail verschickt.</p>
+            <p className="text-xs text-green-700 bg-green-100 rounded-md p-2">Wenn der Account noch unbestÃ¤tigt ist, wurde eine neue Mail verschickt.</p>
           ) : null}
           <Button asChild variant="outline">
             <Link href="/auth/login">Zum Login</Link>
@@ -63,4 +63,3 @@ export default function SignUpSuccessPage() {
     </div>
   )
 }
-
