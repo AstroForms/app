@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer"
+﻿import nodemailer from "nodemailer"
 
 type MailPayload = {
   to: string
@@ -23,6 +23,12 @@ function getBaseUrl() {
   return "http://localhost:3000"
 }
 
+function getMailTimeoutMs() {
+  const value = Number(process.env.MAIL_SEND_TIMEOUT_MS || "8000")
+  if (!Number.isFinite(value) || value <= 0) return 8000
+  return Math.min(value, 30_000)
+}
+
 function createTransporter() {
   const host = process.env.SMTP_HOST
   const port = Number(process.env.SMTP_PORT || "587")
@@ -33,11 +39,16 @@ function createTransporter() {
     return null
   }
 
+  const timeoutMs = getMailTimeoutMs()
+
   return nodemailer.createTransport({
     host,
     port,
     secure: normalizeBoolean(process.env.SMTP_SECURE),
     auth: { user, pass },
+    connectionTimeout: timeoutMs,
+    greetingTimeout: timeoutMs,
+    socketTimeout: timeoutMs,
   })
 }
 
@@ -49,13 +60,21 @@ export async function sendMail(payload: MailPayload) {
     return
   }
 
-  await transporter.sendMail({
-    from: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: payload.to,
-    subject: payload.subject,
-    text: payload.text,
-    html: payload.html,
+  const timeoutMs = getMailTimeoutMs()
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`mail send timeout after ${timeoutMs}ms`)), timeoutMs)
   })
+
+  await Promise.race([
+    transporter.sendMail({
+      from: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: payload.to,
+      subject: payload.subject,
+      text: payload.text,
+      html: payload.html,
+    }),
+    timeoutPromise,
+  ])
 }
 
 export async function sendEmailVerificationMail(params: {

@@ -106,6 +106,7 @@ SMTP_USER=""
 SMTP_PASS=""
 SMTP_FROM="AstroForms <noreply@example.com>"
 MAIL_FROM="AstroForms <noreply@example.com>"
+MAIL_SEND_TIMEOUT_MS="8000"
 ```
 
 ## Kommentare: Threads + Reactions

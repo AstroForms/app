@@ -22,6 +22,24 @@ const authRoutes = [
   "/auth/sign-up",
 ]
 
+function clearCookie(response: NextResponse, name: string) {
+  const isSecurePrefixed = name.startsWith("__Secure-") || name.startsWith("__Host-")
+  response.cookies.set({
+    name,
+    value: "",
+    path: "/",
+    expires: new Date(0),
+    secure: isSecurePrefixed || process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    httpOnly: true,
+  })
+}
+
+function clearAuthCallbackCookies(response: NextResponse) {
+  clearCookie(response, "__Secure-authjs.callback-url")
+  clearCookie(response, "authjs.callback-url")
+}
+
 async function isUserCurrentlyBannedSafe(userId: string) {
   try {
     return await isUserCurrentlyBanned(userId)
@@ -67,10 +85,9 @@ export default auth(async (req) => {
       const loginUrl = new URL("/auth/login", nextUrl)
       loginUrl.searchParams.set("error", "AccountBanned")
       const response = NextResponse.redirect(loginUrl)
-      response.cookies.delete("__Secure-authjs.callback-url")
-      response.cookies.delete("authjs.callback-url")
-      response.cookies.delete("authjs.session-token")
-      response.cookies.delete("__Secure-authjs.session-token")
+      clearAuthCallbackCookies(response)
+      clearCookie(response, "authjs.session-token")
+      clearCookie(response, "__Secure-authjs.session-token")
       return response
     }
 
@@ -79,28 +96,26 @@ export default auth(async (req) => {
       const loginUrl = new URL("/auth/login", nextUrl)
       loginUrl.searchParams.set("callbackUrl", nextUrl.pathname)
       const response = NextResponse.redirect(loginUrl)
-      response.cookies.delete("__Secure-authjs.callback-url")
-      response.cookies.delete("authjs.callback-url")
+      clearAuthCallbackCookies(response)
       return response
     }
 
     // Redirect to home if accessing auth route while logged in
     if (isAuthRoute && isLoggedIn) {
       const response = NextResponse.redirect(new URL("/", nextUrl))
-      response.cookies.delete("__Secure-authjs.callback-url")
-      response.cookies.delete("authjs.callback-url")
+      clearAuthCallbackCookies(response)
       return response
     }
 
     if (isTwoFactorRoute && !isLoggedIn) {
       const response = NextResponse.redirect(new URL("/auth/login", nextUrl))
-      response.cookies.delete(TWO_FACTOR_COOKIE_NAME)
+      clearCookie(response, TWO_FACTOR_COOKIE_NAME)
       return response
     }
 
     if (isTwoFactorRoute && isLoggedIn && !twoFactorEnabled) {
       const response = NextResponse.redirect(new URL("/", nextUrl))
-      response.cookies.delete(TWO_FACTOR_COOKIE_NAME)
+      clearCookie(response, TWO_FACTOR_COOKIE_NAME)
       return response
     }
 
@@ -133,11 +148,10 @@ export default auth(async (req) => {
     }
 
     const response = NextResponse.next()
-    response.cookies.delete("__Secure-authjs.callback-url")
-    response.cookies.delete("authjs.callback-url")
+    clearAuthCallbackCookies(response)
     if (!isLoggedIn) {
-      response.cookies.delete(TWO_FACTOR_COOKIE_NAME)
-      response.cookies.delete(LEGAL_ACCEPTANCE_COOKIE_NAME)
+      clearCookie(response, TWO_FACTOR_COOKIE_NAME)
+      clearCookie(response, LEGAL_ACCEPTANCE_COOKIE_NAME)
     }
     return response
   } catch (error) {
