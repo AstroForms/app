@@ -15,12 +15,18 @@ function safeDecode(value: string) {
 
 function createPrismaClient() {
   const rawUrl = process.env.DATABASE_URL
-  const databaseUrl =
+  const defaultDatabaseUrl =
     rawUrl && typeof rawUrl === "string"
       ? rawUrl
       : "mysql://astroforms:change_me@127.0.0.1:3306/astroforms"
 
-  const parsed = new URL(databaseUrl)
+  let parsed: URL
+  try {
+    parsed = new URL(defaultDatabaseUrl)
+  } catch {
+    console.error("[db] Invalid DATABASE_URL, falling back to local default DSN.")
+    parsed = new URL("mysql://astroforms:change_me@127.0.0.1:3306/astroforms")
+  }
   const configuredLimit = Number(process.env.DB_CONNECTION_LIMIT)
   const connectionLimit =
     Number.isFinite(configuredLimit) && configuredLimit > 0
