@@ -229,6 +229,8 @@ providers.push(
             return slowAuthFailure()
           }
 
+          const hasVerifiedEmail = Boolean(user.emailVerified)
+
           const isBanned = await isBannedSafe(user.id)
 
           return {
@@ -237,6 +239,7 @@ providers.push(
             name: user.name,
             image: user.image,
             banned: isBanned,
+            emailVerified: hasVerifiedEmail,
           }
         } catch {
           return slowAuthFailure()
@@ -382,6 +385,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       try {
         if ((user as { banned?: boolean } | null)?.banned) {
           return "/auth/login?error=AccountBanned"
+        }
+        if ((user as { emailVerified?: boolean } | null)?.emailVerified === false) {
+          return "/auth/login?error=EmailNotVerified"
         }
 
         const userId = await resolveUserIdFromAuthCandidate({ id: user.id, email: user.email })

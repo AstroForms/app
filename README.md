@@ -88,6 +88,7 @@ NODE_ENV="development"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="replace-with-random-secret"
 AUTH_TRUST_HOST="true"
+APP_URL="http://localhost:3000"
 
 # OAuth Provider (optional)
 GITHUB_CLIENT_ID=""
@@ -103,6 +104,7 @@ SMTP_PORT="587"
 SMTP_USER=""
 SMTP_PASS=""
 SMTP_FROM="AstroForms <noreply@example.com>"
+MAIL_FROM="AstroForms <noreply@example.com>"
 ```
 
 ## Kommentare: Threads + Reactions

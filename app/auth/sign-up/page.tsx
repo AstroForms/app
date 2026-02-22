@@ -64,7 +64,7 @@ export default function SignUpPage() {
     try {
       const result = await registerUser({ email, password, name: username })
       if (result.error) throw new Error(result.error)
-      router.push("/auth/sign-up-success")
+      router.push(`/auth/sign-up-success?email=${encodeURIComponent(email)}`)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten")
     } finally {
@@ -156,6 +156,7 @@ export default function SignUpPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="h-11 bg-secondary/50 border-border/50"
               />
+              <p className="text-xs text-muted-foreground">Mindestens 10 Zeichen empfohlen, besser mit Zahlen und Sonderzeichen.</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="repeat-password" className="text-foreground">Passwort wiederholen</Label>
@@ -189,6 +190,9 @@ export default function SignUpPage() {
           <Link href="/legal/tos" className="text-primary hover:underline">Nutzungsbedingungen</Link>,{" "}
           <Link href="/legal/privacy" className="text-primary hover:underline">Datenschutz</Link> und{" "}
           <Link href="/legal/impressum" className="text-primary hover:underline">Impressum</Link> zu.
+        </p>
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          Sicherheits-Hinweis: Wir fragen dich niemals per E-Mail nach deinem Passwort.
         </p>
       </div>
     </div>

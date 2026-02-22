@@ -1,0 +1,101 @@
+import nodemailer from "nodemailer"
+
+type MailPayload = {
+  to: string
+  subject: string
+  text: string
+  html?: string
+}
+
+function normalizeBoolean(value: string | undefined) {
+  return value === "1" || value === "true" || value === "yes"
+}
+
+function getBaseUrl() {
+  const direct = process.env.APP_URL || process.env.NEXTAUTH_URL
+  if (direct) return direct.replace(/\/$/, "")
+
+  const vercelUrl = process.env.VERCEL_URL
+  if (vercelUrl) {
+    return `https://${vercelUrl.replace(/\/$/, "")}`
+  }
+
+  return "http://localhost:3000"
+}
+
+function createTransporter() {
+  const host = process.env.SMTP_HOST
+  const port = Number(process.env.SMTP_PORT || "587")
+  const user = process.env.SMTP_USER
+  const pass = process.env.SMTP_PASS
+
+  if (!host || !user || !pass) {
+    return null
+  }
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: normalizeBoolean(process.env.SMTP_SECURE),
+    auth: { user, pass },
+  })
+}
+
+export async function sendMail(payload: MailPayload) {
+  const transporter = createTransporter()
+  if (!transporter) {
+    console.warn("[mail] SMTP configuration missing. Skipping real mail delivery.")
+    console.info("[mail] Preview", { to: payload.to, subject: payload.subject, text: payload.text })
+    return
+  }
+
+  await transporter.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: payload.to,
+    subject: payload.subject,
+    text: payload.text,
+    html: payload.html,
+  })
+}
+
+export async function sendEmailVerificationMail(params: {
+  email: string
+  name?: string | null
+  token: string
+}) {
+  const verificationUrl = `${getBaseUrl()}/api/auth/verify-email?token=${encodeURIComponent(params.token)}`
+  const greetingName = params.name?.trim() || "dort"
+
+  const text = [
+    `Hi ${greetingName},`,
+    "",
+    "bitte bestaetige deine E-Mail-Adresse fuer AstroForms:",
+    verificationUrl,
+    "",
+    "Der Link ist 24 Stunden gueltig.",
+    "",
+    "Sicherheits-Hinweis:",
+    "- Wir fragen dich niemals per Mail nach deinem Passwort.",
+    "- Oeffne nur Links mit der korrekten AstroForms-Domain.",
+  ].join("\n")
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111">
+      <h2 style="margin:0 0 12px">E-Mail bestaetigen</h2>
+      <p>Hi ${greetingName},</p>
+      <p>bitte bestaetige deine E-Mail-Adresse fuer AstroForms:</p>
+      <p><a href="${verificationUrl}">${verificationUrl}</a></p>
+      <p>Der Link ist <strong>24 Stunden</strong> gueltig.</p>
+      <p><strong>Sicherheits-Hinweis:</strong><br />
+      Wir fragen dich niemals nach deinem Passwort per Mail.<br />
+      Oeffne nur Links mit der offiziellen AstroForms-Domain.</p>
+    </div>
+  `
+
+  await sendMail({
+    to: params.email,
+    subject: "Bitte bestaetige deine E-Mail-Adresse",
+    text,
+    html,
+  })
+}

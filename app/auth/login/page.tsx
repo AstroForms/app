@@ -45,6 +45,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
@@ -53,6 +54,8 @@ export default function LoginPage() {
     switch (value) {
       case "AccountBanned":
         return "Dein Account ist aktuell gesperrt. Bitte kontaktiere den Support."
+      case "EmailNotVerified":
+        return "Bitte bestaetige zuerst deine E-Mail-Adresse. Pruefe dein Postfach."
       case "CredentialsSignin":
         return "Login fehlgeschlagen. PrÃ¼fe Benutzername/E-Mail und Passwort."
       case "AccessDenied":
@@ -61,6 +64,10 @@ export default function LoginPage() {
         return "Login ist gerade nicht verfÃ¼gbar (Configuration). Bitte spÃ¤ter erneut versuchen."
       case "OAuthAccountNotLinked":
         return "Dieser OAuth-Login ist nicht mit deinem Account verknÃ¼pft."
+      case "VerificationExpired":
+        return "Der Bestaetigungslink ist abgelaufen. Lass dir bitte einen neuen Link senden."
+      case "Verification":
+        return "Der Bestaetigungslink ist ungueltig oder wurde bereits verwendet."
       default:
         return "Anmeldung fehlgeschlagen. Bitte erneut versuchen."
     }
@@ -68,9 +75,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    const incomingError = new URLSearchParams(window.location.search).get("error")
+    const search = new URLSearchParams(window.location.search)
+    const incomingError = search.get("error")
     if (incomingError) {
       setError(mapAuthError(incomingError))
+    }
+    if (search.get("verified") === "1") {
+      setNotice("E-Mail erfolgreich bestaetigt. Du kannst dich jetzt anmelden.")
     }
   }, [])
 
@@ -202,6 +213,9 @@ export default function LoginPage() {
             </div>
             {error && (
               <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{error}</p>
+            )}
+            {notice && (
+              <p className="text-sm text-green-700 bg-green-100 rounded-lg p-3">{notice}</p>
             )}
             <Button type="submit" className="w-full h-11 font-semibold text-primary-foreground" disabled={isLoading}>
               {isLoading ? "Anmelden..." : "Anmelden"}
