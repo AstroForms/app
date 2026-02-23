@@ -14,11 +14,11 @@ export const metadata: Metadata = {
 const TERMS_CHANGELOG = [
   {
     version: CURRENT_TERMS_VERSION,
-    date: "20. Februar 2026",
+    date: "23. Februar 2026",
     changes: [
-      "Nutzungsbedingungen auf aktuelle Funktionen aktualisiert (DMs, Blockieren, Reports, Moderation).",
-      "Regeln für Bots, Automatisierungen, Channel-Management und Promotion/Boosting präzisiert.",
-      "Klarstellungen zu Account-Sanktionen, Haftung, Freistellung und Änderungen am Dienst.",
+      "Inhalte an reale Plattformfunktionen angepasst (Posts, Kommentare, Follows, DMs, DM-Anfragen).",
+      "Regeln fuer Channels, Bots, Automationen, Promotion-Anfragen und Reports konkretisiert.",
+      "Abschnitte zu Kontosicherheit (Passwort, 2FA, Passkeys), Sanktionen und Konto-Loeschung praezisiert.",
     ],
   },
   {
@@ -26,8 +26,8 @@ const TERMS_CHANGELOG = [
     date: "19. Februar 2026",
     changes: [
       "Umbenennung von AGB auf Nutzungsbedingungen.",
-      "Ergänzung eines Cookie-/Consent-Hinweises.",
-      "Sicherheitsabschnitt um 2FA-Hinweis ergänzt.",
+      "Ergaenzung eines Cookie-/Consent-Hinweises.",
+      "Sicherheitsabschnitt um 2FA-Hinweis ergaenzt.",
     ],
   },
   {
@@ -35,13 +35,13 @@ const TERMS_CHANGELOG = [
     date: "9. Februar 2026",
     changes: [
       "Klarstellungen zu Bots, Automatisierungen und Moderation.",
-      "Präzisierung zum XP- und Levelsystem.",
+      "Praezisierung zum XP- und Levelsystem.",
     ],
   },
   {
     version: "Version 1.0",
     date: "1. Februar 2026",
-    changes: ["Erstveröffentlichung der Nutzungsbedingungen."],
+    changes: ["Erstveroeffentlichung der Nutzungsbedingungen."],
   },
 ]
 
@@ -55,7 +55,7 @@ export default function TosPage() {
           </Link>
           <Button variant="ghost" asChild className="text-muted-foreground">
             <Link href="/">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Zurück
+              <ArrowLeft className="mr-2 h-4 w-4" /> Zurueck
             </Link>
           </Button>
         </div>
@@ -63,106 +63,106 @@ export default function TosPage() {
 
       <main className="mx-auto max-w-4xl px-6 py-16">
         <h1 className="mb-2 text-3xl font-bold text-foreground">Nutzungsbedingungen</h1>
-        <p className="mb-10 text-muted-foreground">Zuletzt aktualisiert: 20. Februar 2026</p>
+        <p className="mb-10 text-muted-foreground">Zuletzt aktualisiert: 23. Februar 2026</p>
 
         <div className="prose prose-invert max-w-none">
           <section className="glass mb-6 rounded-2xl p-8">
             <h2 className="mb-4 text-xl font-semibold text-foreground">1. Geltungsbereich und Vertragspartner</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Diese Nutzungsbedingungen regeln die Nutzung der Plattform AstroForms und aller damit verbundenen
-              Funktionen (z. B. Profile, Channels, Bots, Nachrichten und Moderation). Mit Registrierung oder Nutzung
-              akzeptierst du diese Bedingungen.
+              Diese Nutzungsbedingungen regeln die Nutzung von AstroForms und aller verbundenen Funktionen,
+              insbesondere Profile, Posts, Kommentare, Follows, Channels, Bots, direkte Nachrichten (DM) und
+              Moderation. Mit Registrierung oder Nutzung akzeptierst du diese Bedingungen.
             </p>
           </section>
 
           <section className="glass mb-6 rounded-2xl p-8">
             <h2 className="mb-4 text-xl font-semibold text-foreground">2. Konto, Sicherheit und Zugang</h2>
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-              Für bestimmte Funktionen ist ein Nutzerkonto erforderlich. Du bist für richtige Kontodaten und den
-              Schutz deiner Zugangsdaten verantwortlich.
+              Fuer zentrale Funktionen ist ein Nutzerkonto erforderlich. Du bist fuer korrekte Angaben und den Schutz
+              deiner Zugangsdaten verantwortlich.
             </p>
             <ul className="flex list-disc list-inside flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
-              <li>Du darfst dein Konto nicht an Dritte überlassen.</li>
-              <li>Bei Verdacht auf Missbrauch musst du uns unverzüglich informieren.</li>
-              <li>Verfügbare Sicherheitsfunktionen (z. B. 2FA) sollen von dir aktiv genutzt werden.</li>
+              <li>Du darfst dein Konto nicht an Dritte ueberlassen.</li>
+              <li>Bei Verdacht auf Missbrauch musst du uns unverzueglich informieren.</li>
+              <li>Verfuegbare Sicherheitsfunktionen wie 2FA und Passkeys sollst du aktiv nutzen.</li>
             </ul>
           </section>
 
           <section className="glass mb-6 rounded-2xl p-8">
             <h2 className="mb-4 text-xl font-semibold text-foreground">3. Inhalte und Verhaltensregeln</h2>
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-              Du bist für alle von dir eingestellten Inhalte und Handlungen verantwortlich.
+              Du bist fuer alle von dir eingestellten Inhalte und Handlungen verantwortlich.
             </p>
             <ul className="flex list-disc list-inside flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
               <li>Verboten sind rechtswidrige, beleidigende, diskriminierende oder gewaltverherrlichende Inhalte.</li>
-              <li>Spam, täuschende Handlungen, Identitätsmissbrauch und technische Angriffe sind untersagt.</li>
-              <li>Du musst die Rechte Dritter beachten (z. B. Urheber-, Marken- und Persönlichkeitsrechte).</li>
+              <li>Spam, Belaestigung, Identitaetsmissbrauch, Taeuschung und technische Angriffe sind untersagt.</li>
+              <li>Du musst die Rechte Dritter beachten (z. B. Urheber-, Marken- und Persoenlichkeitsrechte).</li>
             </ul>
           </section>
 
           <section className="glass mb-6 rounded-2xl p-8">
             <h2 className="mb-4 text-xl font-semibold text-foreground">4. Nutzungsrechte an Inhalten</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Du behältst grundsätzlich deine Rechte an eigenen Inhalten. Du räumst AstroForms jedoch ein
-              einfaches, nicht-exklusives Recht ein, Inhalte im Rahmen des Plattformbetriebs zu speichern, zu
-              verarbeiten, anzuzeigen und technisch zu verteilen (z. B. im Feed, in Channels, in Profilen oder in
-              Nachrichten), soweit dies für die Bereitstellung erforderlich ist.
+              Du behaeltst grundsaetzlich deine Rechte an eigenen Inhalten. Du raeumst AstroForms ein einfaches,
+              nicht-exklusives Recht ein, Inhalte fuer den Plattformbetrieb zu speichern, zu verarbeiten, anzuzeigen
+              und technisch zu verteilen (z. B. in Feeds, Profilen, Channels oder DMs), soweit dies fuer die
+              Bereitstellung erforderlich ist.
             </p>
           </section>
 
           <section className="glass mb-6 rounded-2xl p-8">
             <h2 className="mb-4 text-xl font-semibold text-foreground">5. Nachrichten, DM-Anfragen und Blockieren</h2>
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-              AstroForms stellt direkte Nachrichten (DM), DM-Anfragen und Privacy-Einstellungen bereit. Je nach
-              Einstellung können Nachrichten direkt, nur als Anfrage oder gar nicht möglich sein.
+              AstroForms bietet direkte Nachrichten (DM), DM-Anfragen und Privacy-Einstellungen. Je nach Einstellung
+              sind Nachrichten direkt, nur per Anfrage oder gar nicht moeglich.
             </p>
             <ul className="flex list-disc list-inside flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
-              <li>Blockierst du einen Nutzer, sind direkte Interaktionen (insb. DMs) eingeschränkt.</li>
-              <li>Missbrauch von Nachrichtenfunktionen kann zu Moderationsmaßnahmen führen.</li>
-              <li>Es besteht kein Anspruch auf Zustellung jeder Nachricht oder dauerhafte Verfügbarkeit von Chats.</li>
+              <li>Beim Blockieren eines Nutzers werden direkte Interaktionen, insbesondere DMs, eingeschraenkt.</li>
+              <li>Missbrauch von Nachrichtenfunktionen kann zu Moderationsmassnahmen fuehren.</li>
+              <li>Es besteht kein Anspruch auf Zustellung jeder Nachricht oder dauerhafte Chat-Verfuegbarkeit.</li>
             </ul>
           </section>
 
           <section className="glass mb-6 rounded-2xl p-8">
             <h2 className="mb-4 text-xl font-semibold text-foreground">6. Channels, Bots und Automatisierungen</h2>
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-              Nutzer können Channels erstellen und verwalten. Bots und Automatisierungen sind nur für zulässige
-              Einsatzzwecke erlaubt.
+              Nutzer koennen Channels erstellen und verwalten. Bots und Automatisierungen sind nur fuer zulaessige
+              Zwecke erlaubt.
             </p>
             <ul className="flex list-disc list-inside flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
-              <li>Channel-Owner und Moderatoren tragen Verantwortung für Inhalte in ihrem Bereich.</li>
-              <li>Bots dürfen nicht für Spam, Belästigung, Umgehung von Sperren oder sonstigen Missbrauch genutzt werden.</li>
-              <li>Wir können Bots oder Automationen bei Risiko, Missbrauch oder Regelverstößen deaktivieren.</li>
+              <li>Channel-Owner und Moderatoren tragen Verantwortung fuer Inhalte in ihrem Bereich.</li>
+              <li>Bots duerfen nicht fuer Spam, Belaestigung, Umgehung von Sperren oder sonstigen Missbrauch genutzt werden.</li>
+              <li>Bei Risiko, Missbrauch oder Verstoessen koennen wir Bots, Automationen oder Integrationen deaktivieren.</li>
             </ul>
           </section>
 
           <section className="glass mb-6 rounded-2xl p-8">
-            <h2 className="mb-4 text-xl font-semibold text-foreground">7. XP, Level, Features und Promotion</h2>
+            <h2 className="mb-4 text-xl font-semibold text-foreground">7. XP, Level, Verifikation und Promotion</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              XP-, Level-, Boost- und Promotionsysteme sind freiwillige Plattformfunktionen ohne zugesicherte
-              wirtschaftliche Gegenleistung. Wir können Regeln, Werte, Verfügbarkeit oder Bedingungen jederzeit
-              anpassen, soweit dies sachlich gerechtfertigt ist (z. B. Sicherheit, Missbrauchsprävention, technische
-              Weiterentwicklung).
+              XP-, Level-, Verifikations- und Promotionsfunktionen sind optionale Plattformfeatures ohne Garantie auf
+              wirtschaftliche Vorteile. Regeln, Werte, Verfuegbarkeit oder Bedingungen koennen aus sachlichen Gruenden
+              angepasst werden, z. B. zur Sicherheit, Missbrauchspraevention oder technischen Weiterentwicklung.
             </p>
           </section>
 
           <section className="glass mb-6 rounded-2xl p-8">
             <h2 className="mb-4 text-xl font-semibold text-foreground">8. Moderation, Reports und Sanktionen</h2>
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-              AstroForms kann Inhalte und Accounts prüfen und bei Verstößen angemessen reagieren.
+              AstroForms kann Inhalte und Accounts pruefen und bei Verstoessen angemessen reagieren. Reports koennen
+              sich insbesondere auf Nutzer, Posts, Channels, Kommentare oder Nachrichten beziehen.
             </p>
             <ul className="flex list-disc list-inside flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
-              <li>Mögliche Maßnahmen: Hinweismaßnahmen, Inhaltseinschränkung, Löschung, temporäre oder permanente Sperre.</li>
-              <li>Gemeldete Inhalte (Reports) dürfen zur Sicherheitsprüfung verarbeitet werden.</li>
-              <li>Bei schwerwiegenden Verstößen behalten wir uns weitergehende rechtliche Schritte vor.</li>
+              <li>Moegliche Massnahmen: Hinweis, Inhaltseinschraenkung, Loeschung, temporaere oder permanente Sperre.</li>
+              <li>Gemeldete Inhalte duerfen zur Sicherheits- und Missbrauchspruefung verarbeitet werden.</li>
+              <li>Bei schwerwiegenden Verstoessen behalten wir uns rechtliche Schritte vor.</li>
             </ul>
           </section>
 
           <section className="glass mb-6 rounded-2xl p-8">
-            <h2 className="mb-4 text-xl font-semibold text-foreground">9. Verfügbarkeit und Änderungen am Dienst</h2>
+            <h2 className="mb-4 text-xl font-semibold text-foreground">9. Verfuegbarkeit und Aenderungen am Dienst</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Wir bemühen uns um eine hohe Verfügbarkeit, können aber keine unterbrechungsfreie Erreichbarkeit
-              garantieren. Funktionen dürfen geändert, erweitert oder eingestellt werden, wenn dies für Betrieb,
+              Wir bemuehen uns um hohe Verfuegbarkeit, koennen aber keine unterbrechungsfreie Erreichbarkeit
+              garantieren. Funktionen koennen geaendert, erweitert oder eingestellt werden, soweit dies fuer Betrieb,
               Sicherheit, Compliance oder Weiterentwicklung erforderlich ist.
             </p>
           </section>
@@ -170,31 +170,31 @@ export default function TosPage() {
           <section className="glass mb-6 rounded-2xl p-8">
             <h2 className="mb-4 text-xl font-semibold text-foreground">10. Haftung und Freistellung</h2>
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-              Wir haften unbeschränkt bei Vorsatz und grober Fahrlässigkeit sowie im gesetzlich zwingenden Umfang.
-              Bei einfacher Fahrlässigkeit haften wir nur bei Verletzung wesentlicher Vertragspflichten und
-              beschränkt auf den typischen, vorhersehbaren Schaden.
+              Wir haften unbeschraenkt bei Vorsatz und grober Fahrlaessigkeit sowie im gesetzlich zwingenden Umfang.
+              Bei einfacher Fahrlaessigkeit haften wir nur bei Verletzung wesentlicher Vertragspflichten und
+              beschraenkt auf den typischen, vorhersehbaren Schaden.
             </p>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Du stellst AstroForms von Ansprüchen Dritter frei, die aus deinen rechtswidrigen Inhalten oder deiner
-              rechtswidrigen Nutzung der Plattform entstehen, soweit du den Verstoß zu vertreten hast.
-            </p>
-          </section>
-
-          <section className="glass mb-6 rounded-2xl p-8">
-            <h2 className="mb-4 text-xl font-semibold text-foreground">11. Laufzeit, Löschung und Beendigung</h2>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Du kannst dein Konto gemäß den verfügbaren Kontofunktionen löschen. Wir können Konten bei
-              schwerwiegenden oder wiederholten Verstößen sperren oder kündigen. Gesetzliche Aufbewahrungs- und
-              Nachweispflichten bleiben unberührt.
+              Du stellst AstroForms von Anspruechen Dritter frei, die aus deinen rechtswidrigen Inhalten oder deiner
+              rechtswidrigen Nutzung der Plattform entstehen, soweit du den Verstoss zu vertreten hast.
             </p>
           </section>
 
           <section className="glass mb-6 rounded-2xl p-8">
-            <h2 className="mb-4 text-xl font-semibold text-foreground">12. Änderungen dieser Nutzungsbedingungen</h2>
+            <h2 className="mb-4 text-xl font-semibold text-foreground">11. Laufzeit, Loeschung und Beendigung</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Wir können diese Nutzungsbedingungen anpassen, wenn sachliche Gründe vorliegen (z. B. neue Funktionen,
-              geänderte Rechtslage, Sicherheitsanforderungen). Die jeweils gültige Version wird auf dieser Seite
-              veröffentlicht. Wesentliche Änderungen können eine erneute Zustimmung erforderlich machen.
+              Du kannst dein Konto gemaess den verfuegbaren Kontofunktionen loeschen. Wir koennen Konten bei
+              schwerwiegenden oder wiederholten Verstoessen sperren oder kuendigen. Gesetzliche Aufbewahrungs- und
+              Nachweispflichten bleiben unberuehrt.
+            </p>
+          </section>
+
+          <section className="glass mb-6 rounded-2xl p-8">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">12. Aenderungen dieser Nutzungsbedingungen</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Wir koennen diese Nutzungsbedingungen anpassen, wenn sachliche Gruende vorliegen (z. B. neue Funktionen,
+              geaenderte Rechtslage, Sicherheitsanforderungen). Die jeweils gueltige Version wird auf dieser Seite
+              veroeffentlicht. Wesentliche Aenderungen koennen eine erneute Zustimmung erforderlich machen.
             </p>
           </section>
 

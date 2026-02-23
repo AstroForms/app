@@ -47,7 +47,7 @@ export default function ImpressumPage() {
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">Kontakt</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              E-Mail: In Arbeit
+              E-Mail: kontakt@astroforms.de
             </p>
           </section>
 
