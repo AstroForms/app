@@ -61,7 +61,7 @@ export default function ImpressumPage() {
           <section className="glass rounded-2xl p-8 mb-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">Haftung für Inhalte</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Als Diensteanbieter sind wir gemäss den allgemeinen Gesetzen für eigene Inhalte auf diesen Seiten
+              Als Diensteanbieter sind wir gemäß den allgemeinen Gesetzen für eigene Inhalte auf diesen Seiten
               verantwortlich. Wir sind jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde
               Informationen zu überwachen oder nach Umständen zu forschen, die auf eine rechtswidrige Tätigkeit
               hinweisen.
@@ -75,14 +75,14 @@ export default function ImpressumPage() {
               haben. Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen. Für die Inhalte
               der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich.
             </p>
-          </section> 
+          </section>
 
           <section className="glass rounded-2xl p-8">
             <h2 className="text-xl font-semibold text-foreground mb-4">Urheberrecht</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechts bedürfen der schriftlichen Zustimmung des jeweiligen Autors bzw. Erstellers.
             </p>
-          </section> 
+          </section>
         </div>
       </main>
 
