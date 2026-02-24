@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
-import { Rocket, Search, Menu, X, Mic, ChevronDown, LayoutDashboard, Hash, Compass, MessageCircle, Bot, User, Shield, Settings, LogOut } from "lucide-react"
+import { Rocket, Search, Menu, X, Mic, ChevronDown, Hash, Compass, BookOpen, User, Shield, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -78,6 +78,7 @@ export function HomeNavbar({ user, onSearch, onToggleSidebar, sidebarOpen }: Hom
   const hasAdminAccess = userRole === "admin" || userRole === "owner"
   const visibleNav = [
     { href: "/", label: "Startseite", icon: Rocket },
+    { href: "/dokumentation", label: "Dokumentation", icon: BookOpen },
     { href: "/channels", label: "Meine Channels", icon: Hash },
     { href: "/discover", label: "Entdecken", icon: Compass },
     { href: "/profile", label: "Profil", icon: User },
